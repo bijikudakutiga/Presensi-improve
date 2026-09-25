@@ -47,6 +47,11 @@ export default function App() {
           <p className="text-sm text-ink/60 mt-1">
             Hubungi admin untuk mendaftarkan akun ini ke sistem presensi.
           </p>
+        <p className="text-xs text-ink/40 mt-3">
+  Login sebagai: {session.user.email}
+  <br />
+  ID akun: {session.user.id}
+</p>
         </div>
       </div>
     );

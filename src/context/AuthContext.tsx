@@ -12,6 +12,7 @@ import type { Profile } from "../types";
 interface AuthContextValue {
   session: Session | null;
   profile: Profile | null;
+  profileError: string | null;
   loading: boolean;
   signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
@@ -23,6 +24,7 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [profileError, setProfileError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   async function loadProfile(userId: string) {
@@ -31,7 +33,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .select("*")
       .eq("id", userId)
       .single();
-    if (!error) setProfile(data as Profile);
+    if (error) {
+      setProfileError(`${error.message} (code: ${error.code || "?"})`);
+      setProfile(null);
+    } else {
+      setProfileError(null);
+      setProfile(data as Profile);
+    }
   }
 
   useEffect(() => {
@@ -75,7 +83,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ session, profile, loading, signInWithGoogle, signOut, refreshProfile }}
+      value={{ session, profile, profileError, loading, signInWithGoogle, signOut, refreshProfile }}
     >
       {children}
     </AuthContext.Provider>

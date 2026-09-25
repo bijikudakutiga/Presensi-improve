@@ -25,7 +25,7 @@ function AdminRoute({ children }: { children: JSX.Element }) {
 }
 
 export default function App() {
-  const { session, profile, loading } = useAuth();
+  const { session, profile, profileError, loading } = useAuth();
 
   if (loading) {
     return (
@@ -47,11 +47,14 @@ export default function App() {
           <p className="text-sm text-ink/60 mt-1">
             Hubungi admin untuk mendaftarkan akun ini ke sistem presensi.
           </p>
-        <p className="text-xs text-ink/40 mt-3">
-  Login sebagai: {session.user.email}
-  <br />
-  ID akun: {session.user.id}
-</p>
+          <p className="text-xs text-ink/40 mt-3">
+            Login sebagai: {session.user.email}
+            <br />
+            ID akun: {session.user.id}
+          </p>
+          {profileError && (
+            <p className="text-xs text-rust mt-3 break-words">Error teknis: {profileError}</p>
+          )}
         </div>
       </div>
     );

@@ -1,4 +1,4 @@
-# Presensi — Aplikasi Presensi & Payroll Karyawan   
+# Presensi — Aplikasi Presensi & Payroll Karyawan
 
 Web app presensi karyawan bertema ungu pastel premium: login Google, presensi
 masuk/keluar/kunjungan klien/lembur dengan foto + validasi lokasi kantor,

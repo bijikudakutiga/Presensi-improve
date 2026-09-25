@@ -52,7 +52,7 @@ language plpgsql
 security definer set search_path = public
 as $$
 begin
-  if not exists (select 1 from public.profiles p where p.id = auth.uid() and p.role = 'admin') then
+  if auth.uid() is not null and not exists (select 1 from public.profiles p where p.id = auth.uid() and p.role = 'admin') then
     new.role := old.role;
     new.base_salary := old.base_salary;
     new.position_id := old.position_id;

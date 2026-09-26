@@ -61,6 +61,33 @@ create trigger project_add_creator
   after insert on public.projects
   for each row execute procedure public.add_creator_as_member();
 
+-- Fungsi bantu (SECURITY DEFINER, bypass RLS) untuk mengecek kepemilikan &
+-- keanggotaan proyek. WAJIB dipakai di kebijakan RLS alih-alih subquery
+-- langsung ke projects/project_members — subquery langsung antar dua tabel
+-- yang saling mengecek satu sama lain di kebijakan RLS masing-masing
+-- menyebabkan "infinite recursion detected in policy" di Postgres.
+create or replace function public.is_project_creator(p_project_id uuid)
+returns boolean
+language sql
+stable
+security definer set search_path = public
+as $$
+  select exists (select 1 from public.projects pr where pr.id = p_project_id and pr.created_by = auth.uid());
+$$;
+
+grant execute on function public.is_project_creator(uuid) to authenticated;
+
+create or replace function public.is_project_member(p_project_id uuid)
+returns boolean
+language sql
+stable
+security definer set search_path = public
+as $$
+  select exists (select 1 from public.project_members pm where pm.project_id = p_project_id and pm.user_id = auth.uid());
+$$;
+
+grant execute on function public.is_project_member(uuid) to authenticated;
+
 -- ---------------------------------------------------------------------
 -- RLS: projects
 -- ---------------------------------------------------------------------
@@ -69,8 +96,8 @@ create policy "Lihat proyek jika anggota/pembuat/admin"
   on public.projects for select
   using (
     created_by = auth.uid()
-    or exists (select 1 from public.project_members pm where pm.project_id = projects.id and pm.user_id = auth.uid())
-    or exists (select 1 from public.profiles p where p.id = auth.uid() and p.role = 'admin')
+    or public.is_project_member(projects.id)
+    or public.is_admin()
   );
 
 drop policy if exists "Siapa saja bisa buat proyek" on public.projects;
@@ -83,7 +110,7 @@ create policy "Pembuat/admin bisa ubah proyek"
   on public.projects for update
   using (
     created_by = auth.uid()
-    or exists (select 1 from public.profiles p where p.id = auth.uid() and p.role = 'admin')
+    or public.is_admin()
   );
 
 drop policy if exists "Pembuat/admin bisa hapus proyek" on public.projects;
@@ -91,7 +118,7 @@ create policy "Pembuat/admin bisa hapus proyek"
   on public.projects for delete
   using (
     created_by = auth.uid()
-    or exists (select 1 from public.profiles p where p.id = auth.uid() and p.role = 'admin')
+    or public.is_admin()
   );
 
 -- ---------------------------------------------------------------------
@@ -102,21 +129,21 @@ create policy "Lihat anggota jika anggota/pembuat/admin"
   on public.project_members for select
   using (
     user_id = auth.uid()
-    or exists (select 1 from public.projects pr where pr.id = project_members.project_id and pr.created_by = auth.uid())
-    or exists (select 1 from public.project_members pm2 where pm2.project_id = project_members.project_id and pm2.user_id = auth.uid())
-    or exists (select 1 from public.profiles p where p.id = auth.uid() and p.role = 'admin')
+    or public.is_project_creator(project_members.project_id)
+    or public.is_project_member(project_members.project_id)
+    or public.is_admin()
   );
 
 drop policy if exists "Pembuat proyek/admin kelola anggota" on public.project_members;
 create policy "Pembuat proyek/admin kelola anggota"
   on public.project_members for all
   using (
-    exists (select 1 from public.projects pr where pr.id = project_members.project_id and pr.created_by = auth.uid())
-    or exists (select 1 from public.profiles p where p.id = auth.uid() and p.role = 'admin')
+    public.is_project_creator(project_members.project_id)
+    or public.is_admin()
   )
   with check (
-    exists (select 1 from public.projects pr where pr.id = project_members.project_id and pr.created_by = auth.uid())
-    or exists (select 1 from public.profiles p where p.id = auth.uid() and p.role = 'admin')
+    public.is_project_creator(project_members.project_id)
+    or public.is_admin()
   );
 
 -- ---------------------------------------------------------------------
@@ -126,12 +153,9 @@ drop policy if exists "Lihat task jika anggota proyek/admin" on public.tasks;
 create policy "Lihat task jika anggota proyek/admin"
   on public.tasks for select
   using (
-    exists (
-      select 1 from public.project_members pm
-      where pm.project_id = tasks.project_id and pm.user_id = auth.uid()
-    )
-    or exists (select 1 from public.projects pr where pr.id = tasks.project_id and pr.created_by = auth.uid())
-    or exists (select 1 from public.profiles p where p.id = auth.uid() and p.role = 'admin')
+    public.is_project_member(tasks.project_id)
+    or public.is_project_creator(tasks.project_id)
+    or public.is_admin()
   );
 
 drop policy if exists "Anggota proyek bisa tambah task" on public.tasks;
@@ -140,9 +164,9 @@ create policy "Anggota proyek bisa tambah task"
   with check (
     created_by = auth.uid()
     and (
-      exists (select 1 from public.project_members pm where pm.project_id = tasks.project_id and pm.user_id = auth.uid())
-      or exists (select 1 from public.projects pr where pr.id = tasks.project_id and pr.created_by = auth.uid())
-      or exists (select 1 from public.profiles p where p.id = auth.uid() and p.role = 'admin')
+      public.is_project_member(tasks.project_id)
+      or public.is_project_creator(tasks.project_id)
+      or public.is_admin()
     )
   );
 
@@ -150,9 +174,9 @@ drop policy if exists "Anggota proyek bisa ubah task" on public.tasks;
 create policy "Anggota proyek bisa ubah task"
   on public.tasks for update
   using (
-    exists (select 1 from public.project_members pm where pm.project_id = tasks.project_id and pm.user_id = auth.uid())
-    or exists (select 1 from public.projects pr where pr.id = tasks.project_id and pr.created_by = auth.uid())
-    or exists (select 1 from public.profiles p where p.id = auth.uid() and p.role = 'admin')
+    public.is_project_member(tasks.project_id)
+    or public.is_project_creator(tasks.project_id)
+    or public.is_admin()
   );
 
 drop policy if exists "Pembuat task/proyek/admin bisa hapus task" on public.tasks;
@@ -160,8 +184,8 @@ create policy "Pembuat task/proyek/admin bisa hapus task"
   on public.tasks for delete
   using (
     created_by = auth.uid()
-    or exists (select 1 from public.projects pr where pr.id = tasks.project_id and pr.created_by = auth.uid())
-    or exists (select 1 from public.profiles p where p.id = auth.uid() and p.role = 'admin')
+    or public.is_project_creator(tasks.project_id)
+    or public.is_admin()
   );
 
 -- Set started_at / completed_at otomatis mengikuti perubahan status.

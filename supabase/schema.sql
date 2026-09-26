@@ -59,6 +59,24 @@ alter table public.profiles add column if not exists base_salary numeric;
 
 alter table public.profiles enable row level security;
 
+-- Fungsi bantu untuk mengecek apakah pengguna yang login adalah admin.
+-- WAJIB pakai fungsi ini (bukan subquery langsung ke profiles) di dalam
+-- kebijakan RLS tabel profiles maupun tabel lain — subquery langsung ke
+-- profiles dari dalam kebijakan profiles sendiri menyebabkan error
+-- "infinite recursion detected in policy for relation profiles" di
+-- Postgres. Fungsi ini SECURITY DEFINER sehingga query di dalamnya
+-- tidak lagi tunduk pada RLS (aman dari rekursi).
+create or replace function public.is_admin()
+returns boolean
+language sql
+stable
+security definer set search_path = public
+as $$
+  select exists (select 1 from public.profiles p where p.id = auth.uid() and p.role = 'admin');
+$$;
+
+grant execute on function public.is_admin() to authenticated;
+
 drop policy if exists "Pengguna bisa melihat profil sendiri" on public.profiles;
 create policy "Pengguna bisa melihat profil sendiri"
   on public.profiles for select
@@ -67,7 +85,7 @@ create policy "Pengguna bisa melihat profil sendiri"
 drop policy if exists "Admin bisa melihat semua profil" on public.profiles;
 create policy "Admin bisa melihat semua profil"
   on public.profiles for select
-  using (exists (select 1 from public.profiles p where p.id = auth.uid() and p.role = 'admin'));
+  using (public.is_admin());
 
 drop policy if exists "Pengguna bisa update profil sendiri" on public.profiles;
 create policy "Pengguna bisa update profil sendiri"
@@ -77,7 +95,7 @@ create policy "Pengguna bisa update profil sendiri"
 drop policy if exists "Admin bisa update semua profil" on public.profiles;
 create policy "Admin bisa update semua profil"
   on public.profiles for update
-  using (exists (select 1 from public.profiles p where p.id = auth.uid() and p.role = 'admin'));
+  using (public.is_admin());
 
 -- Trigger: otomatis buat baris profiles saat ada user baru mendaftar via Google.
 create or replace function public.handle_new_user()
@@ -111,7 +129,7 @@ language plpgsql
 security definer set search_path = public
 as $$
 begin
-  if auth.uid() is not null and not exists (select 1 from public.profiles p where p.id = auth.uid() and p.role = 'admin') then
+  if auth.uid() is not null and not public.is_admin() then
     new.role := old.role;
     new.base_salary := old.base_salary;
   end if;
@@ -146,8 +164,8 @@ create policy "Semua pengguna login bisa melihat daftar kantor"
 drop policy if exists "Hanya admin bisa mengubah kantor" on public.offices;
 create policy "Hanya admin bisa mengubah kantor"
   on public.offices for all
-  using (exists (select 1 from public.profiles p where p.id = auth.uid() and p.role = 'admin'))
-  with check (exists (select 1 from public.profiles p where p.id = auth.uid() and p.role = 'admin'));
+  using (public.is_admin())
+  with check (public.is_admin());
 
 -- ---------------------------------------------------------------------
 -- 3. TABEL WORK_SCHEDULES
@@ -173,8 +191,8 @@ create policy "Semua pengguna login bisa melihat jadwal kerja"
 drop policy if exists "Hanya admin bisa mengubah jadwal kerja" on public.work_schedules;
 create policy "Hanya admin bisa mengubah jadwal kerja"
   on public.work_schedules for all
-  using (exists (select 1 from public.profiles p where p.id = auth.uid() and p.role = 'admin'))
-  with check (exists (select 1 from public.profiles p where p.id = auth.uid() and p.role = 'admin'));
+  using (public.is_admin())
+  with check (public.is_admin());
 
 -- ---------------------------------------------------------------------
 -- 4. TABEL ATTENDANCE
@@ -212,7 +230,7 @@ create policy "Karyawan bisa melihat presensi sendiri"
 drop policy if exists "Admin bisa melihat semua presensi" on public.attendance;
 create policy "Admin bisa melihat semua presensi"
   on public.attendance for select
-  using (exists (select 1 from public.profiles p where p.id = auth.uid() and p.role = 'admin'));
+  using (public.is_admin());
 
 -- Catatan: insert baris attendance HANYA lewat fungsi record_attendance() (security definer)
 -- di bawah, supaya jarak & status validasi tidak bisa dipalsukan dari sisi client.
@@ -320,7 +338,7 @@ create policy "Admin lihat semua foto presensi"
   on storage.objects for select
   using (
     bucket_id = 'attendance-photos'
-    and exists (select 1 from public.profiles p where p.id = auth.uid() and p.role = 'admin')
+    and public.is_admin()
   );
 
 drop policy if exists "Pengguna upload avatar sendiri" on storage.objects;
@@ -362,8 +380,8 @@ alter table public.payroll_periods enable row level security;
 drop policy if exists "Admin akses penuh payroll_periods" on public.payroll_periods;
 create policy "Admin akses penuh payroll_periods"
   on public.payroll_periods for all
-  using (exists (select 1 from public.profiles p where p.id = auth.uid() and p.role = 'admin'))
-  with check (exists (select 1 from public.profiles p where p.id = auth.uid() and p.role = 'admin'));
+  using (public.is_admin())
+  with check (public.is_admin());
 
 drop policy if exists "Karyawan lihat periode yang sudah final" on public.payroll_periods;
 create policy "Karyawan lihat periode yang sudah final"
@@ -392,25 +410,25 @@ alter table public.payroll_items enable row level security;
 drop policy if exists "Admin select payroll_items" on public.payroll_items;
 create policy "Admin select payroll_items"
   on public.payroll_items for select
-  using (exists (select 1 from public.profiles p where p.id = auth.uid() and p.role = 'admin'));
+  using (public.is_admin());
 
 drop policy if exists "Admin insert payroll_items" on public.payroll_items;
 create policy "Admin insert payroll_items"
   on public.payroll_items for insert
-  with check (exists (select 1 from public.profiles p where p.id = auth.uid() and p.role = 'admin'));
+  with check (public.is_admin());
 
 drop policy if exists "Admin update payroll_items saat draft" on public.payroll_items;
 create policy "Admin update payroll_items saat draft"
   on public.payroll_items for update
   using (
-    exists (select 1 from public.profiles p where p.id = auth.uid() and p.role = 'admin')
+    public.is_admin()
     and exists (select 1 from public.payroll_periods pp where pp.id = payroll_items.period_id and pp.status = 'draft')
   );
 
 drop policy if exists "Admin delete payroll_items" on public.payroll_items;
 create policy "Admin delete payroll_items"
   on public.payroll_items for delete
-  using (exists (select 1 from public.profiles p where p.id = auth.uid() and p.role = 'admin'));
+  using (public.is_admin());
 
 drop policy if exists "Karyawan lihat slip gaji sendiri yang final" on public.payroll_items;
 create policy "Karyawan lihat slip gaji sendiri yang final"
@@ -440,7 +458,7 @@ declare
   v_late_minutes numeric;
   v_overtime_hours numeric;
 begin
-  if not exists (select 1 from public.profiles p where p.id = auth.uid() and p.role = 'admin') then
+  if not public.is_admin() then
     raise exception 'Hanya admin yang bisa membuat payroll';
   end if;
 

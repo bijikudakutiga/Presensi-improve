@@ -23,8 +23,8 @@ create policy "Semua pengguna login bisa lihat daftar jabatan"
 drop policy if exists "Hanya admin bisa kelola jabatan" on public.positions;
 create policy "Hanya admin bisa kelola jabatan"
   on public.positions for all
-  using (exists (select 1 from public.profiles p where p.id = auth.uid() and p.role = 'admin'))
-  with check (exists (select 1 from public.profiles p where p.id = auth.uid() and p.role = 'admin'));
+  using (public.is_admin())
+  with check (public.is_admin());
 
 -- Jabatan awal sesuai struktur perusahaan (boleh diubah/ditambah lewat menu admin).
 insert into public.positions (name, level)
@@ -52,7 +52,7 @@ language plpgsql
 security definer set search_path = public
 as $$
 begin
-  if auth.uid() is not null and not exists (select 1 from public.profiles p where p.id = auth.uid() and p.role = 'admin') then
+  if auth.uid() is not null and not public.is_admin() then
     new.role := old.role;
     new.base_salary := old.base_salary;
     new.position_id := old.position_id;
@@ -98,8 +98,8 @@ create policy "Semua pengguna login bisa lihat template KPI"
 drop policy if exists "Hanya admin kelola template KPI" on public.kpi_templates;
 create policy "Hanya admin kelola template KPI"
   on public.kpi_templates for all
-  using (exists (select 1 from public.profiles p where p.id = auth.uid() and p.role = 'admin'))
-  with check (exists (select 1 from public.profiles p where p.id = auth.uid() and p.role = 'admin'));
+  using (public.is_admin())
+  with check (public.is_admin());
 
 -- Jabatan mana saja yang bisa DINILAI (jadi subjek) memakai template ini.
 -- Jika kosong untuk suatu template = berlaku untuk semua jabatan.
@@ -119,8 +119,8 @@ create policy "Semua pengguna login bisa lihat lingkup template"
 drop policy if exists "Hanya admin kelola lingkup template" on public.kpi_template_positions;
 create policy "Hanya admin kelola lingkup template"
   on public.kpi_template_positions for all
-  using (exists (select 1 from public.profiles p where p.id = auth.uid() and p.role = 'admin'))
-  with check (exists (select 1 from public.profiles p where p.id = auth.uid() and p.role = 'admin'));
+  using (public.is_admin())
+  with check (public.is_admin());
 
 create table if not exists public.kpi_questions (
   id uuid primary key default gen_random_uuid(),
@@ -142,8 +142,8 @@ create policy "Semua pengguna login bisa lihat pertanyaan KPI"
 drop policy if exists "Hanya admin kelola pertanyaan KPI" on public.kpi_questions;
 create policy "Hanya admin kelola pertanyaan KPI"
   on public.kpi_questions for all
-  using (exists (select 1 from public.profiles p where p.id = auth.uid() and p.role = 'admin'))
-  with check (exists (select 1 from public.profiles p where p.id = auth.uid() and p.role = 'admin'));
+  using (public.is_admin())
+  with check (public.is_admin());
 
 -- ---------------------------------------------------------------------
 -- 4. PERIODE KPI
@@ -171,8 +171,8 @@ create policy "Semua pengguna login bisa lihat periode KPI"
 drop policy if exists "Hanya admin kelola periode KPI" on public.kpi_periods;
 create policy "Hanya admin kelola periode KPI"
   on public.kpi_periods for all
-  using (exists (select 1 from public.profiles p where p.id = auth.uid() and p.role = 'admin'))
-  with check (exists (select 1 from public.profiles p where p.id = auth.uid() and p.role = 'admin'));
+  using (public.is_admin())
+  with check (public.is_admin());
 
 -- ---------------------------------------------------------------------
 -- 5. PENUGASAN PENILAIAN (siapa menilai siapa) & JAWABAN
@@ -210,8 +210,8 @@ create policy "Subjek lihat penugasan setelah periode ditutup"
 drop policy if exists "Admin akses penuh penugasan KPI" on public.kpi_assignments;
 create policy "Admin akses penuh penugasan KPI"
   on public.kpi_assignments for all
-  using (exists (select 1 from public.profiles p where p.id = auth.uid() and p.role = 'admin'))
-  with check (exists (select 1 from public.profiles p where p.id = auth.uid() and p.role = 'admin'));
+  using (public.is_admin())
+  with check (public.is_admin());
 
 drop policy if exists "Reviewer update status penugasan sendiri" on public.kpi_assignments;
 create policy "Reviewer update status penugasan sendiri"
@@ -266,7 +266,7 @@ create policy "Subjek lihat jawaban setelah periode ditutup"
 drop policy if exists "Admin lihat semua jawaban KPI" on public.kpi_responses;
 create policy "Admin lihat semua jawaban KPI"
   on public.kpi_responses for select
-  using (exists (select 1 from public.profiles p where p.id = auth.uid() and p.role = 'admin'));
+  using (public.is_admin());
 
 -- ---------------------------------------------------------------------
 -- 6. FUNGSI generate_kpi_assignments
@@ -287,7 +287,7 @@ declare
   subj record;
   peer record;
 begin
-  if not exists (select 1 from public.profiles p where p.id = auth.uid() and p.role = 'admin') then
+  if not public.is_admin() then
     raise exception 'Hanya admin/HR yang bisa membuat penugasan KPI';
   end if;
 

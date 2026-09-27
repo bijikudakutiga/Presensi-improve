@@ -17,7 +17,7 @@
 
 @layer components {
   .btn {
-    @apply inline-flex items-center justify-center gap-2 rounded px-4 py-2.5 text-sm font-semibold transition-colors disabled:opacity-40 disabled:cursor-not-allowed;
+    @apply inline-flex items-center justify-center gap-2 rounded px-4 py-2.5 text-sm font-semibold transition-all active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed disabled:active:scale-100;
   }
   .btn-primary {
     @apply btn bg-primary text-white hover:bg-primary-dark shadow-soft;
@@ -29,7 +29,7 @@
     @apply btn bg-rust text-white hover:opacity-90;
   }
   .card {
-    @apply rounded-xl border border-line bg-white p-5 shadow-soft;
+    @apply rounded-xl border border-line bg-white p-5 shadow-soft transition-all;
   }
   .field-label {
     @apply text-xs font-semibold uppercase tracking-wide text-ink/50;

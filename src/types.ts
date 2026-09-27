@@ -27,6 +27,7 @@ export interface Profile {
   bank_account_number: string | null;
   bank_account_holder: string | null;
   base_salary: number | null;
+  hr_access: boolean;
   created_at: string;
 }
 

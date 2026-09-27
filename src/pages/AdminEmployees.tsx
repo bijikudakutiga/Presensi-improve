@@ -22,7 +22,7 @@ export function AdminEmployees() {
 
   if (selected) {
     return (
-      <div className="space-y-4">
+      <div className="space-y-4 animate-fadein">
         <button className="text-sm font-semibold text-ink/50" onClick={() => setSelected(null)}>
           ← Kembali ke daftar karyawan
         </button>
@@ -58,6 +58,9 @@ export function AdminEmployees() {
               </div>
               <div className="text-right">
                 <p className="text-xs font-semibold uppercase text-ink/40">{e.role}</p>
+                {e.hr_access && (
+                  <p className="text-xs font-semibold text-primary-dark">Akses HR</p>
+                )}
                 <p className="text-xs text-ink/50">{formatRupiah(e.base_salary)}</p>
               </div>
             </button>

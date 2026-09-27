@@ -26,7 +26,7 @@ export function PayslipPage() {
   }, [session?.user?.id]);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 animate-fadein">
       <h1 className="text-xl font-extrabold tracking-tight">Slip Gaji</h1>
       {loading ? (
         <p className="text-sm text-ink/50">Memuat...</p>

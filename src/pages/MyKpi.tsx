@@ -96,7 +96,7 @@ export function MyKpi() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 animate-fadein">
       <h1 className="text-xl font-extrabold tracking-tight">KPI 360°</h1>
       <div className="flex gap-2">
         <button

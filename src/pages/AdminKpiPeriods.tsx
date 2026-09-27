@@ -106,7 +106,7 @@ export function AdminKpiPeriods() {
     for (const a of assignments) (bySubject[a.subject_id] ??= []).push(a);
 
     return (
-      <div className="space-y-4">
+      <div className="space-y-4 animate-fadein">
         <button className="text-sm font-semibold text-ink/50" onClick={() => setSelected(null)}>
           ← Kembali ke daftar periode
         </button>

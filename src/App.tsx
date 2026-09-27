@@ -1,6 +1,8 @@
+import { useState } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import { useAuth } from "./context/AuthContext";
 import { Layout } from "./components/Layout";
+import { SplashScreen } from "./components/SplashScreen";
 import { Login } from "./pages/Login";
 import { Dashboard } from "./pages/Dashboard";
 import { HistoryPage } from "./pages/HistoryPage";
@@ -24,8 +26,19 @@ function AdminRoute({ children }: { children: JSX.Element }) {
   return children;
 }
 
+function HrRoute({ children }: { children: JSX.Element }) {
+  const { profile } = useAuth();
+  if (profile?.role !== "admin" || !profile?.hr_access) return <Navigate to="/" replace />;
+  return children;
+}
+
 export default function App() {
   const { session, profile, profileError, loading } = useAuth();
+  const [showSplash, setShowSplash] = useState(true);
+
+  if (showSplash) {
+    return <SplashScreen onDone={() => setShowSplash(false)} />;
+  }
 
   if (loading) {
     return (
@@ -89,9 +102,9 @@ export default function App() {
         <Route
           path="/admin/payroll"
           element={
-            <AdminRoute>
+            <HrRoute>
               <AdminPayroll />
-            </AdminRoute>
+            </HrRoute>
           }
         />
         <Route
@@ -105,9 +118,9 @@ export default function App() {
         <Route
           path="/admin/jadwal"
           element={
-            <AdminRoute>
+            <HrRoute>
               <AdminSchedule />
-            </AdminRoute>
+            </HrRoute>
           }
         />
         <Route
@@ -121,17 +134,17 @@ export default function App() {
         <Route
           path="/admin/kpi-template"
           element={
-            <AdminRoute>
+            <HrRoute>
               <AdminKpiTemplates />
-            </AdminRoute>
+            </HrRoute>
           }
         />
         <Route
           path="/admin/kpi-periode"
           element={
-            <AdminRoute>
+            <HrRoute>
               <AdminKpiPeriods />
-            </AdminRoute>
+            </HrRoute>
           }
         />
         <Route path="*" element={<Navigate to="/" replace />} />

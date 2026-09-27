@@ -12,6 +12,11 @@ Storage), di-deploy ke Cloudflare Pages lewat repo GitHub.
 
 ## Ringkasan fitur
 
+- **Tampilan & pengalaman aplikasi**: splash screen logo ImproveHub saat
+  dibuka, tombol pasang aplikasi di layar utama HP (teks berbeda untuk
+  Android & iPhone), navigasi bawah bergaya aplikasi mobile dengan tombol
+  presensi bulat di tengah, kutipan motivasi berjalan (running text), dan
+  animasi halus di berbagai transisi/tombol.
 - **Login Google** lewat Supabase Auth.
 - **Dashboard**: foto profil (bisa diganti), sapaan sesuai jam ("Selamat
   pagi/siang/sore"), kutipan motivasi harian (diambil otomatis dari
@@ -49,6 +54,12 @@ Storage), di-deploy ke Cloudflare Pages lewat repo GitHub.
   tiap karyawan. Penilaian pakai skala 1–5, nama penilai tetap terlihat
   (tidak anonim), dan hasil baru bisa dilihat karyawan setelah periode
   ditutup HR.
+- **Akses HR terpisah**: menu Payroll, Jadwal & Tarif, dan pengaturan KPI
+  hanya terlihat & bisa diakses oleh admin yang juga ditandai "Akses HR"
+  (biasanya Owner & HR Manager) — admin lain (mis. Creative Project
+  Manager) tetap bisa mengelola Rekap Absensi/Data Karyawan/Jabatan tapi
+  tidak melihat data gaji atau pengaturan KPI. Dijaga di level database
+  (RLS), bukan cuma disembunyikan di tampilan.
 
 ---
 
@@ -97,8 +108,13 @@ Configuration → Redirect URLs** supaya login Google berfungsi saat development
 1. Login sekali dengan akun Google yang akan jadi admin.
 2. Di Supabase SQL Editor:
    ```sql
-   update public.profiles set role = 'admin' where email = 'email-anda@contoh.com';
+   update public.profiles
+   set role = 'admin', hr_access = true
+   where email = 'email-anda@contoh.com';
    ```
+   `hr_access = true` diperlukan supaya akun ini bisa melihat menu Payroll,
+   Jadwal & Tarif, dan pengaturan KPI — menu-menu ini sengaja disembunyikan
+   dari admin lain yang bukan HR (lihat poin 3 di bawah).
 3. Login ulang → menu admin (Rekap Absensi, Data Karyawan, Jabatan, Payroll,
    Template KPI, Periode KPI, Lokasi Kantor, Jadwal & Tarif) akan muncul.
 4. Buka **Lokasi Kantor** → tambahkan minimal satu kantor + radius toleransi.
@@ -109,8 +125,9 @@ Configuration → Redirect URLs** supaya login Google berfungsi saat development
    Manager, Secretary, HR Staff, Partnership, Community & Event, Creative
    Design).
 7. Buka **Data Karyawan** → untuk tiap karyawan isi **gaji pokok** (untuk
-   payroll) serta **jabatan** dan **atasan langsung** (dipakai KPI 360° untuk
-   tahu siapa menilai siapa).
+   payroll), **jabatan** dan **atasan langsung** (dipakai KPI 360°), serta
+   centang **Akses HR** untuk admin lain yang juga perlu melihat
+   Payroll/KPI (mis. HR Manager).
 8. Setiap karyawan mengisi sendiri menu **Data Diri** masing-masing.
 
 ## 5. Alur payroll bulanan
@@ -191,12 +208,17 @@ src/
   components/AttendanceCapture.tsx  alur foto + lokasi + catatan
   components/CameraCapture.tsx      akses kamera device
   components/TaskModal.tsx          form tambah/edit task
+  components/SplashScreen.tsx       splash screen logo saat app dibuka
+  components/InstallPrompt.tsx      pop-up ajakan pasang aplikasi (Android/iOS)
+  components/MoreMenuSheet.tsx      menu "Lainnya" di bottom nav
+  components/MarqueeQuote.tsx       running text kutipan motivasi
   lib/quotes.ts                 kutipan motivasi harian (API + fallback)
   lib/attendanceState.ts        aturan jenis presensi apa yang tersedia
   lib/employeeDirectory.ts      direktori nama karyawan lintas-modul
+public/manifest.json            web app manifest (supaya bisa "Install" di Android)
 supabase/schema.sql             presensi, profil, payroll
 supabase/schema_tasks.sql       proyek & task (Kanban)
-supabase/schema_kpi.sql         jabatan, atasan langsung, KPI 360°
+supabase/schema_kpi.sql         jabatan, atasan langsung, akses HR, KPI 360°
 ```
 
 ## Catatan keamanan & keterbatasan
@@ -204,10 +226,16 @@ supabase/schema_kpi.sql         jabatan, atasan langsung, KPI 360°
 - Jarak ke kantor dihitung **di server** (fungsi `record_attendance`), bukan
   di browser, sehingga tidak bisa diakali lewat DevTools.
 - Perlindungan tambahan: trigger database mencegah karyawan mengubah
-  `role`, `base_salary`, `position_id`, atau `supervisor_id` miliknya sendiri
-  meski mencoba memanggil API langsung (kolom-kolom ini menentukan struktur
-  organisasi yang dipakai KPI); payroll & KPI yang sudah difinalisasi/ditutup
-  juga dikunci di level database, bukan cuma disembunyikan di tampilan.
+  `role`, `base_salary`, `position_id`, `supervisor_id`, atau `hr_access`
+  miliknya sendiri meski mencoba memanggil API langsung (kolom-kolom ini
+  menentukan struktur organisasi & hak akses); payroll & KPI yang sudah
+  difinalisasi/ditutup juga dikunci di level database, bukan cuma
+  disembunyikan di tampilan.
+- Semua pengecekan "apakah admin/HR/anggota proyek ini" memakai fungsi
+  database (`is_admin()`, `is_hr()`, `is_project_member()`, dst) alih-alih
+  subquery langsung ke tabel yang sama — subquery langsung menyebabkan error
+  "infinite recursion" di Postgres kalau dua kebijakan RLS saling mengecek
+  satu sama lain.
 - Nama & jabatan dasar semua karyawan bisa dilihat siapa saja yang login
   (lewat fungsi `get_employee_directory()`) — dibutuhkan supaya karyawan bisa
   memilih rekan di proyek dan melihat nama penilai KPI. Data sensitif (gaji,

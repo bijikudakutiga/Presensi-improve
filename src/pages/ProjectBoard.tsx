@@ -100,7 +100,7 @@ export function ProjectBoard() {
   if (error || !project) return <p className="text-sm text-rust">{error}</p>;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 animate-fadein">
       <button className="text-sm font-semibold text-ink/50" onClick={() => navigate("/proyek")}>
         ← Semua Proyek
       </button>

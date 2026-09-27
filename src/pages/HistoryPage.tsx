@@ -42,7 +42,7 @@ export function HistoryPage() {
   }, [session?.user?.id, days]);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 animate-fadein">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-extrabold tracking-tight">Riwayat Presensi</h1>
         <select

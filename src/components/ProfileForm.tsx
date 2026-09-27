@@ -114,6 +114,7 @@ export function ProfileForm({ profile, isAdmin, onSaved }: Props) {
       payload.position_id = form.position_id || null;
       payload.supervisor_id = form.supervisor_id || null;
       payload.position = positions.find((p) => p.id === form.position_id)?.name || null;
+      payload.hr_access = !!form.hr_access;
     }
     const { error: updateError } = await supabase.from("profiles").update(payload).eq("id", profile.id);
     setSaving(false);
@@ -257,6 +258,14 @@ export function ProfileForm({ profile, isAdmin, onSaved }: Props) {
               ]}
             />
           </div>
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={!!form.hr_access}
+              onChange={(e) => set("hr_access", e.target.checked)}
+            />
+            Akses HR (bisa melihat & kelola Payroll dan pengaturan KPI)
+          </label>
         </div>
       )}
 

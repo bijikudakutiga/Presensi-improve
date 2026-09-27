@@ -7,7 +7,7 @@ export function ProfileIdentityPage() {
   if (!profile) return null;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 animate-fadein">
       <h1 className="text-xl font-extrabold tracking-tight">Data Diri</h1>
       <p className="text-sm text-ink/50 -mt-3">
         Lengkapi data ini agar HR dapat memproses administrasi kepegawaian dan penggajian dengan tepat.

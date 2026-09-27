@@ -117,7 +117,7 @@ export function Projects() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 animate-fadein">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-extrabold tracking-tight">Proyek &amp; Task</h1>
         <button className="btn-primary text-sm" onClick={() => setShowForm((s) => !s)}>

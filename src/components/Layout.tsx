@@ -1,76 +1,69 @@
-import { NavLink, Outlet } from "react-router-dom";
+import { useState } from "react";
+import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-
-interface NavItem {
-  to: string;
-  label: string;
-  icon?: string;
-  end?: boolean;
-}
-
-const EMPLOYEE_NAV: NavItem[] = [
-  { to: "/", label: "Beranda", icon: "/icons/01-app-icon.png", end: true },
-  { to: "/riwayat", label: "Riwayat", icon: "/icons/08-riwayat.png" },
-  { to: "/proyek", label: "Proyek" },
-  { to: "/kpi", label: "KPI" },
-  { to: "/slip-gaji", label: "Slip Gaji", icon: "/icons/09-payroll.png" },
-  { to: "/data-diri", label: "Data Diri", icon: "/icons/10-data-diri.png" },
-];
-
-const ADMIN_NAV: NavItem[] = [
-  { to: "/admin", label: "Rekap Absensi", icon: "/icons/08-riwayat.png" },
-  { to: "/admin/karyawan", label: "Data Karyawan", icon: "/icons/10-data-diri.png" },
-  { to: "/admin/jabatan", label: "Jabatan" },
-  { to: "/admin/payroll", label: "Payroll", icon: "/icons/09-payroll.png" },
-  { to: "/admin/kpi-template", label: "Template KPI" },
-  { to: "/admin/kpi-periode", label: "Periode KPI" },
-  { to: "/admin/kantor", label: "Lokasi Kantor", icon: "/icons/11-lokasi-kantor.png" },
-  { to: "/admin/jadwal", label: "Jadwal & Tarif", icon: "/icons/12-jadwal-tarif.png" },
-];
+import { MoreMenuSheet } from "./MoreMenuSheet";
+import { InstallPrompt } from "./InstallPrompt";
 
 export function Layout() {
-  const { profile, signOut } = useAuth();
+  const { signOut } = useAuth();
+  const navigate = useNavigate();
+  const [moreOpen, setMoreOpen] = useState(false);
 
-  const linkClass = ({ isActive }: { isActive: boolean }) =>
-    `flex items-center gap-1.5 whitespace-nowrap px-3 py-2 text-sm font-semibold rounded transition-colors ${
-      isActive ? "bg-primary text-white" : "text-ink/60 hover:text-ink"
+  const tabClass = ({ isActive }: { isActive: boolean }) =>
+    `flex flex-col items-center justify-center gap-0.5 flex-1 py-1.5 text-[11px] font-semibold transition-colors ${
+      isActive ? "text-primary" : "text-ink/40"
     }`;
 
   return (
-    <div className="min-h-screen flex flex-col">
-      <header className="border-b border-line bg-white sticky top-0 z-20">
-        <div className="mx-auto max-w-4xl px-4 py-3 flex items-center justify-between gap-3">
-          <span className="flex items-center gap-2 font-extrabold text-lg tracking-tight text-primary-dark shrink-0">
-            <img src="/icons/01-app-icon.png" alt="" className="h-7 w-7 object-contain" />
-            Presensi
-          </span>
-          <button className="btn-outline text-xs px-3 py-1.5 shrink-0" onClick={signOut}>
-            Keluar
-          </button>
-        </div>
-        <nav className="mx-auto max-w-4xl px-4 pb-2 flex gap-1 overflow-x-auto">
-          {EMPLOYEE_NAV.map((item) => (
-            <NavLink key={item.to} to={item.to} end={item.end} className={linkClass}>
-              {item.icon && <img src={item.icon} alt="" className="h-5 w-5 object-contain" />}
-              {item.label}
-            </NavLink>
-          ))}
-          {profile?.role === "admin" && (
-            <>
-              <span className="mx-1 self-center text-line">|</span>
-              {ADMIN_NAV.map((item) => (
-                <NavLink key={item.to} to={item.to} className={linkClass}>
-                  {item.icon && <img src={item.icon} alt="" className="h-5 w-5 object-contain" />}
-                  {item.label}
-                </NavLink>
-              ))}
-            </>
-          )}
-        </nav>
-      </header>
-      <main className="flex-1 mx-auto w-full max-w-4xl px-4 py-6">
+    <div className="min-h-screen flex flex-col bg-paper">
+      <div className="fixed right-3 z-30" style={{ top: "calc(env(safe-area-inset-top, 0px) + 10px)" }}>
+        <button
+          className="rounded-full bg-white/80 backdrop-blur px-3 py-1.5 text-xs font-semibold text-ink/60 shadow-soft"
+          onClick={signOut}
+        >
+          Keluar
+        </button>
+      </div>
+
+      <main className="flex-1 pb-24">
         <Outlet />
       </main>
+
+      <nav
+        className="fixed bottom-0 left-0 right-0 z-30 mx-auto flex w-full max-w-md items-stretch bg-white border-t border-line px-1"
+        style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
+      >
+        <NavLink to="/" end className={tabClass}>
+          <img src="/icons/01-app-icon.png" alt="" className="h-6 w-6 object-contain" />
+          Beranda
+        </NavLink>
+        <NavLink to="/riwayat" className={tabClass}>
+          <img src="/icons/08-riwayat.png" alt="" className="h-6 w-6 object-contain" />
+          Riwayat
+        </NavLink>
+
+        <div className="flex-1 flex items-center justify-center">
+          <button
+            onClick={() => navigate("/?absen=1")}
+            className="-mt-6 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-white shadow-soft active:scale-95 transition-transform"
+            aria-label="Absen"
+          >
+            <span className="text-2xl leading-none">+</span>
+          </button>
+        </div>
+
+        <NavLink to="/proyek" className={tabClass}>
+          <span className="h-6 w-6 flex items-center justify-center text-lg">🗂</span>
+          Proyek
+        </NavLink>
+        <button className={`flex flex-col items-center justify-center gap-0.5 flex-1 py-1.5 text-[11px] font-semibold text-ink/40`} onClick={() => setMoreOpen(true)}>
+          <span className="h-6 w-6 flex items-center justify-center text-lg">⋯</span>
+          Lainnya
+        </button>
+      </nav>
+
+      {moreOpen && <MoreMenuSheet onClose={() => setMoreOpen(false)} />}
+      <InstallPrompt />
     </div>
   );
 }

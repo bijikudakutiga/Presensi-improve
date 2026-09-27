@@ -103,7 +103,7 @@ export function AdminPayroll() {
   const totalPayroll = items.reduce((sum, i) => sum + i.total, 0);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 animate-fadein">
       <h1 className="text-xl font-extrabold tracking-tight">Payroll</h1>
 
       <div className="card flex flex-wrap items-end gap-3">

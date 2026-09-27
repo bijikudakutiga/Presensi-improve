@@ -72,7 +72,7 @@ export function AdminDashboard() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 animate-fadein">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <h1 className="text-xl font-extrabold tracking-tight">Dashboard Admin</h1>
         <button className="btn-outline text-sm" onClick={exportCsv} disabled={filtered.length === 0}>

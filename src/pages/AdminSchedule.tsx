@@ -64,7 +64,7 @@ export function AdminSchedule() {
   if (loading) return <p className="text-sm text-ink/50">Memuat...</p>;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 animate-fadein">
       <h1 className="text-xl font-extrabold tracking-tight">Jadwal Kerja &amp; Tarif Payroll</h1>
       <div className="card space-y-3">
         <p className="field-label">Jam kerja default</p>

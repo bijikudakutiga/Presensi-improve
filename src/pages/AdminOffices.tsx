@@ -73,7 +73,7 @@ export function AdminOffices() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-fadein">
       <h1 className="text-xl font-extrabold tracking-tight">Lokasi Kantor</h1>
 
       <div className="card space-y-3">

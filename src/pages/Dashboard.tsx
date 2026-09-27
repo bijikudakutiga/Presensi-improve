@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
+import { Link, useSearchParams } from "react-router-dom";
 import { supabase } from "../supabaseClient";
 import { useAuth } from "../context/AuthContext";
 import { getDailyQuote } from "../lib/quotes";
@@ -6,6 +7,7 @@ import { getAttendanceOptions, typeLabel } from "../lib/attendanceState";
 import { AttendanceSheet } from "../components/AttendanceSheet";
 import { AttendanceCapture } from "../components/AttendanceCapture";
 import { StatusBadge } from "../components/StatusBadge";
+import { MarqueeQuote } from "../components/MarqueeQuote";
 import type { AttendanceRecord, AttendanceType, DailyQuote, Office, WorkSchedule } from "../types";
 
 function startOfTodayIso() {
@@ -14,8 +16,17 @@ function startOfTodayIso() {
   return d.toISOString();
 }
 
+interface MenuItem {
+  to: string;
+  label: string;
+  icon?: string;
+  emoji?: string;
+  show: boolean;
+}
+
 export function Dashboard() {
   const { profile, session, refreshProfile } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [today, setToday] = useState<AttendanceRecord[]>([]);
   const [loadingToday, setLoadingToday] = useState(true);
   const [offices, setOffices] = useState<Office[]>([]);
@@ -45,10 +56,7 @@ export function Dashboard() {
   }, [session?.user?.id]);
 
   useEffect(() => {
-    supabase
-      .from("offices")
-      .select("*")
-      .then(({ data }) => setOffices((data as Office[]) || []));
+    supabase.from("offices").select("*").then(({ data }) => setOffices((data as Office[]) || []));
     supabase
       .from("work_schedules")
       .select("*")
@@ -57,6 +65,17 @@ export function Dashboard() {
       .then(({ data }) => setSchedule(data as WorkSchedule | null));
     getDailyQuote().then(setQuote);
   }, []);
+
+  // Tombol "+" di bottom nav mengarah ke /?absen=1 supaya bisa langsung
+  // membuka sheet presensi dari halaman mana pun.
+  useEffect(() => {
+    if (searchParams.get("absen") === "1" && !loadingToday) {
+      setSheetOpen(true);
+      searchParams.delete("absen");
+      setSearchParams(searchParams, { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, loadingToday]);
 
   async function handleAvatarChange(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -83,90 +102,174 @@ export function Dashboard() {
   }
 
   const options = getAttendanceOptions(today);
-  const anyEnabled = options.some((o) => o.enabled);
+  const masuk = today.find((r) => r.type === "in");
+  const keluar = today.find((r) => r.type === "out");
+
+  const isHr = profile?.role === "admin" && profile?.hr_access;
+  const isAdmin = profile?.role === "admin";
+
+  const menuItems: MenuItem[] = [
+    { to: "/riwayat", label: "Riwayat", icon: "/icons/08-riwayat.png", show: true },
+    { to: "/slip-gaji", label: "Slip Gaji", icon: "/icons/09-payroll.png", show: true },
+    { to: "/kpi", label: "KPI", emoji: "🎯", show: true },
+    { to: "/proyek", label: "Proyek", emoji: "🗂", show: true },
+    { to: "/data-diri", label: "Data Diri", icon: "/icons/10-data-diri.png", show: true },
+    { to: "/admin", label: "Rekap Absensi", icon: "/icons/08-riwayat.png", show: isAdmin },
+    { to: "/admin/karyawan", label: "Data Karyawan", icon: "/icons/10-data-diri.png", show: isAdmin },
+    { to: "/admin/jabatan", label: "Jabatan", emoji: "🏷", show: isAdmin },
+    { to: "/admin/kantor", label: "Lokasi Kantor", icon: "/icons/11-lokasi-kantor.png", show: isAdmin },
+    { to: "/admin/payroll", label: "Payroll", icon: "/icons/09-payroll.png", show: isHr },
+    { to: "/admin/jadwal", label: "Jadwal & Tarif", icon: "/icons/12-jadwal-tarif.png", show: isHr },
+    { to: "/admin/kpi-template", label: "Template KPI", emoji: "📋", show: isHr },
+    { to: "/admin/kpi-periode", label: "Periode KPI", emoji: "🗓", show: isHr },
+  ].filter((m) => m.show);
+
+  const PAGE_SIZE = 8;
+  const pages: MenuItem[][] = [];
+  for (let i = 0; i < menuItems.length; i += PAGE_SIZE) pages.push(menuItems.slice(i, i + PAGE_SIZE));
+  const [page, setPage] = useState(0);
+  const [swipeStartX, setSwipeStartX] = useState<number | null>(null);
 
   return (
-    <div className="space-y-5 pb-24">
-      <div className="card flex items-center gap-4">
-        <div className="relative">
-          <button
-            className="h-16 w-16 overflow-hidden rounded-full border-2 border-primary-soft bg-primary-soft"
-            onClick={() => fileInputRef.current?.click()}
-            title="Ganti foto profil"
-          >
-            {profile?.avatar_url ? (
-              <img src={profile.avatar_url} alt="" className="h-full w-full object-cover" />
-            ) : (
-              <span className="flex h-full w-full items-center justify-center text-xl font-extrabold text-primary-dark">
-                {(profile?.full_name || profile?.email || "?").charAt(0).toUpperCase()}
+    <div className="animate-fadein">
+      <div className="bg-gradient-to-br from-primary to-primary-dark px-4 pt-[calc(env(safe-area-inset-top,0px)+14px)] pb-16 text-white">
+        <div className="flex items-start justify-between">
+          <div className="flex items-center gap-3">
+            <div className="relative">
+              <button
+                className="h-14 w-14 overflow-hidden rounded-full border-2 border-white/50 bg-white/20"
+                onClick={() => fileInputRef.current?.click()}
+                title="Ganti foto profil"
+              >
+                {profile?.avatar_url ? (
+                  <img src={profile.avatar_url} alt="" className="h-full w-full object-cover" />
+                ) : (
+                  <span className="flex h-full w-full items-center justify-center text-lg font-extrabold">
+                    {(profile?.full_name || profile?.email || "?").charAt(0).toUpperCase()}
+                  </span>
+                )}
+              </button>
+              <span className="absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-white text-[10px] text-primary shadow-soft">
+                {avatarUploading ? "…" : "✎"}
               </span>
-            )}
-          </button>
-          <span className="absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full bg-primary text-xs text-white shadow-soft">
-            {avatarUploading ? "…" : "✎"}
-          </span>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            className="hidden"
-            onChange={handleAvatarChange}
-          />
-        </div>
-        <div className="min-w-0">
-          <p className="text-sm text-ink/50">
-            {nowGreeting()}
-          </p>
-          <h1 className="text-lg font-extrabold tracking-tight truncate">
-            {profile?.full_name || profile?.email}
-          </h1>
-          {profile?.position && <p className="text-sm text-ink/50">{profile.position}</p>}
+              <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarChange} />
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs text-white/70">Howdy!!</p>
+              <h1 className="text-lg font-extrabold tracking-tight truncate max-w-[46vw]">
+                {profile?.full_name || profile?.email}
+              </h1>
+            </div>
+          </div>
+          <span className="flex h-9 w-9 items-center justify-center rounded-full bg-white/15 text-lg">🔔</span>
         </div>
       </div>
 
-      {quote && (
-        <div className="card bg-primary-soft border-primary-soft">
-          <p className="text-sm font-medium leading-relaxed text-primary-dark">&ldquo;{quote.text}&rdquo;</p>
-          <p className="mt-2 text-xs font-semibold text-primary-dark/70">— {quote.author}</p>
-        </div>
-      )}
-
-      <div className="card">
-        <div className="flex items-center justify-between mb-2">
-          <p className="field-label">Status hari ini</p>
-          {schedule && (
-            <p className="text-xs text-ink/40">
-              Jam kerja {schedule.start_time.slice(0, 5)}–{schedule.end_time.slice(0, 5)}
+      <div className="relative -mt-10 px-4 space-y-4">
+        <div className="card">
+          <div className="flex items-center justify-between mb-2">
+            <p className="font-semibold text-sm">
+              {new Date().toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "long" })}
             </p>
+            {schedule && (
+              <p className="text-xs text-ink/40">
+                Jam kerja {schedule.start_time.slice(0, 5)}–{schedule.end_time.slice(0, 5)}
+              </p>
+            )}
+          </div>
+          {loadingToday ? (
+            <p className="text-sm text-ink/50">Memuat...</p>
+          ) : (
+            <div className="grid grid-cols-2 divide-x divide-line">
+              <div className="pr-3">
+                <p className="field-label mb-1">Presensi Masuk</p>
+                {masuk ? (
+                  <>
+                    <p className="text-xl font-extrabold">
+                      {new Date(masuk.created_at).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })}
+                    </p>
+                    <StatusBadge withinRadius={masuk.within_radius} />
+                  </>
+                ) : (
+                  <p className="text-sm text-ink/40">Belum absen</p>
+                )}
+              </div>
+              <div className="pl-3">
+                <p className="field-label mb-1">Presensi Keluar</p>
+                {keluar ? (
+                  <>
+                    <p className="text-xl font-extrabold">
+                      {new Date(keluar.created_at).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })}
+                    </p>
+                    <StatusBadge withinRadius={keluar.within_radius} />
+                  </>
+                ) : (
+                  <p className="text-sm text-ink/40">Belum absen</p>
+                )}
+              </div>
+            </div>
           )}
         </div>
-        {loadingToday ? (
-          <p className="text-sm text-ink/50">Memuat...</p>
-        ) : today.length === 0 ? (
-          <p className="text-sm text-ink/50">Belum ada presensi hari ini.</p>
-        ) : (
-          <ul className="space-y-2">
-            {today.map((r) => (
-              <li key={r.id} className="flex items-center gap-2 text-sm">
-                <span className="font-semibold">{typeLabel(r.type)}</span>
-                <span className="text-ink/50">
-                  {new Date(r.created_at).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })}
-                </span>
-                <StatusBadge withinRadius={r.within_radius} />
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
 
-      <button
-        className="fixed bottom-6 left-1/2 -translate-x-1/2 z-30 flex h-16 w-16 items-center justify-center rounded-full bg-primary text-white shadow-soft disabled:opacity-40"
-        onClick={() => setSheetOpen(true)}
-        disabled={!anyEnabled}
-        aria-label="Absen"
-      >
-        <span className="text-3xl leading-none">+</span>
-      </button>
+        {quote && <MarqueeQuote text={quote.text} author={quote.author} />}
+
+        <div className="card">
+          <div
+            className="grid grid-cols-4 gap-y-4"
+            onTouchStart={(e) => setSwipeStartX(e.touches[0].clientX)}
+            onTouchEnd={(e) => {
+              if (swipeStartX === null) return;
+              const dx = e.changedTouches[0].clientX - swipeStartX;
+              if (dx < -40 && page < pages.length - 1) setPage((p) => p + 1);
+              if (dx > 40 && page > 0) setPage((p) => p - 1);
+              setSwipeStartX(null);
+            }}
+          >
+            {(pages[page] || []).map((item) => (
+              <Link key={item.to} to={item.to} className="flex flex-col items-center gap-1.5 text-center">
+                <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary-soft text-xl active:scale-90 transition-transform">
+                  {item.icon ? (
+                    <img src={item.icon} alt="" className="h-6 w-6 object-contain" />
+                  ) : (
+                    item.emoji
+                  )}
+                </span>
+                <span className="text-[11px] font-medium text-ink/70 leading-tight">{item.label}</span>
+              </Link>
+            ))}
+          </div>
+          {pages.length > 1 && (
+            <div className="mt-3 flex justify-center gap-1.5">
+              {pages.map((_, i) => (
+                <button
+                  key={i}
+                  onClick={() => setPage(i)}
+                  className={`h-1.5 rounded-full transition-all ${i === page ? "w-5 bg-primary" : "w-1.5 bg-line"}`}
+                  aria-label={`Halaman ${i + 1}`}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="card">
+          <p className="field-label mb-2">Aktivitas Hari Ini</p>
+          {today.length === 0 ? (
+            <p className="text-sm text-ink/50">Belum ada aktivitas presensi hari ini.</p>
+          ) : (
+            <ul className="space-y-2">
+              {today.map((r) => (
+                <li key={r.id} className="flex items-center gap-2 text-sm border-l-2 border-primary-soft pl-3">
+                  <span className="font-semibold">{typeLabel(r.type)}</span>
+                  <span className="text-ink/50">
+                    {new Date(r.created_at).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </div>
 
       {sheetOpen && (
         <AttendanceSheet
@@ -193,12 +296,4 @@ export function Dashboard() {
       )}
     </div>
   );
-}
-
-function nowGreeting(): string {
-  const hour = new Date().getHours();
-  if (hour < 10) return "Selamat pagi";
-  if (hour < 15) return "Selamat siang";
-  if (hour < 18) return "Selamat sore";
-  return "Selamat malam";
 }

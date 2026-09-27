@@ -46,7 +46,7 @@ export function AdminPositions() {
   const levelLabel: Record<number, string> = { 0: "Owner", 1: "Manager", 2: "Staff" };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 animate-fadein">
       <h1 className="text-xl font-extrabold tracking-tight">Jabatan</h1>
       <p className="text-sm text-ink/50 -mt-3">
         Level dipakai untuk pengelompokan tampilan saja (0 = Owner, 1 = Manager, 2 = Staff). Atasan

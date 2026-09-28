@@ -1,11 +1,9 @@
 import { useState } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
-import { useAuth } from "../context/AuthContext";
 import { MoreMenuSheet } from "./MoreMenuSheet";
 import { InstallPrompt } from "./InstallPrompt";
 
 export function Layout() {
-  const { signOut } = useAuth();
   const navigate = useNavigate();
   const [moreOpen, setMoreOpen] = useState(false);
 
@@ -16,13 +14,15 @@ export function Layout() {
 
   return (
     <div className="min-h-screen flex flex-col bg-paper">
-      <div className="fixed right-3 z-30" style={{ top: "calc(env(safe-area-inset-top, 0px) + 10px)" }}>
-        <button
-          className="rounded-full bg-white/80 backdrop-blur px-3 py-1.5 text-xs font-semibold text-ink/60 shadow-soft"
-          onClick={signOut}
-        >
-          Keluar
-        </button>
+      <div
+        className="sticky top-0 z-20 flex items-center gap-2 bg-white border-b border-line px-4"
+        style={{
+          paddingTop: "env(safe-area-inset-top, 0px)",
+          minHeight: "calc(env(safe-area-inset-top, 0px) + 52px)",
+        }}
+      >
+        <img src="/icons/01-app-icon.png" alt="" className="h-7 w-7 object-contain" />
+        <span className="font-extrabold text-primary-dark tracking-tight">Presensi</span>
       </div>
 
       <main className="flex-1 pb-24">

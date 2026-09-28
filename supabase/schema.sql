@@ -97,21 +97,50 @@ create policy "Admin bisa update semua profil"
   on public.profiles for update
   using (public.is_admin());
 
--- Trigger: otomatis buat baris profiles saat ada user baru mendaftar via Google.
+-- Tabel untuk mendaftarkan email calon admin SEBELUM mereka login pertama
+-- kali (lihat halaman admin "Undang Admin"). Begitu email ini login lewat
+-- Google, handle_new_user() otomatis menjadikan akunnya admin (dan hr_access
+-- sesuai yang diset), lalu baris undangan dihapus (sekali pakai).
+create table if not exists public.pending_admin_invites (
+  email text primary key,
+  hr_access boolean not null default false,
+  created_at timestamptz not null default now()
+);
+
+alter table public.pending_admin_invites enable row level security;
+
+drop policy if exists "Hanya admin kelola pending_admin_invites" on public.pending_admin_invites;
+create policy "Hanya admin kelola pending_admin_invites"
+  on public.pending_admin_invites for all
+  using (public.is_admin())
+  with check (public.is_admin());
+
+-- Trigger: otomatis buat baris profiles saat ada user baru mendaftar via
+-- Google. Jika emailnya ada di pending_admin_invites, langsung jadi admin.
 create or replace function public.handle_new_user()
 returns trigger
 language plpgsql
 security definer set search_path = public
 as $$
+declare
+  v_invite record;
 begin
-  insert into public.profiles (id, full_name, email, role)
+  select * into v_invite from public.pending_admin_invites where email = new.email;
+
+  insert into public.profiles (id, full_name, email, role, hr_access)
   values (
     new.id,
     coalesce(new.raw_user_meta_data ->> 'full_name', new.raw_user_meta_data ->> 'name'),
     new.email,
-    'employee'
+    case when v_invite.email is not null then 'admin' else 'employee' end,
+    coalesce(v_invite.hr_access, false)
   )
   on conflict (id) do nothing;
+
+  if v_invite.email is not null then
+    delete from public.pending_admin_invites where email = v_invite.email;
+  end if;
+
   return new;
 end;
 $$;
@@ -191,8 +220,8 @@ create policy "Semua pengguna login bisa melihat jadwal kerja"
 drop policy if exists "Hanya admin bisa mengubah jadwal kerja" on public.work_schedules;
 create policy "Hanya admin bisa mengubah jadwal kerja"
   on public.work_schedules for all
-  using (public.is_admin())
-  with check (public.is_admin());
+  using (public.is_hr())
+  with check (public.is_hr());
 
 -- ---------------------------------------------------------------------
 -- 4. TABEL ATTENDANCE
@@ -380,8 +409,8 @@ alter table public.payroll_periods enable row level security;
 drop policy if exists "Admin akses penuh payroll_periods" on public.payroll_periods;
 create policy "Admin akses penuh payroll_periods"
   on public.payroll_periods for all
-  using (public.is_admin())
-  with check (public.is_admin());
+  using (public.is_hr())
+  with check (public.is_hr());
 
 drop policy if exists "Karyawan lihat periode yang sudah final" on public.payroll_periods;
 create policy "Karyawan lihat periode yang sudah final"
@@ -410,25 +439,25 @@ alter table public.payroll_items enable row level security;
 drop policy if exists "Admin select payroll_items" on public.payroll_items;
 create policy "Admin select payroll_items"
   on public.payroll_items for select
-  using (public.is_admin());
+  using (public.is_hr());
 
 drop policy if exists "Admin insert payroll_items" on public.payroll_items;
 create policy "Admin insert payroll_items"
   on public.payroll_items for insert
-  with check (public.is_admin());
+  with check (public.is_hr());
 
 drop policy if exists "Admin update payroll_items saat draft" on public.payroll_items;
 create policy "Admin update payroll_items saat draft"
   on public.payroll_items for update
   using (
-    public.is_admin()
+    public.is_hr()
     and exists (select 1 from public.payroll_periods pp where pp.id = payroll_items.period_id and pp.status = 'draft')
   );
 
 drop policy if exists "Admin delete payroll_items" on public.payroll_items;
 create policy "Admin delete payroll_items"
   on public.payroll_items for delete
-  using (public.is_admin());
+  using (public.is_hr());
 
 drop policy if exists "Karyawan lihat slip gaji sendiri yang final" on public.payroll_items;
 create policy "Karyawan lihat slip gaji sendiri yang final"
@@ -458,8 +487,8 @@ declare
   v_late_minutes numeric;
   v_overtime_hours numeric;
 begin
-  if not public.is_admin() then
-    raise exception 'Hanya admin yang bisa membuat payroll';
+  if not public.is_hr() then
+    raise exception 'Hanya admin dengan akses HR yang bisa membuat payroll';
   end if;
 
   select * into v_schedule from public.work_schedules order by updated_at desc limit 1;

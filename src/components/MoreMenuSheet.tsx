@@ -21,6 +21,7 @@ export function MoreMenuSheet({ onClose }: { onClose: () => void }) {
         { to: "/admin", label: "Rekap Absensi", icon: "/icons/08-riwayat.png" },
         { to: "/admin/karyawan", label: "Data Karyawan", icon: "/icons/10-data-diri.png" },
         { to: "/admin/jabatan", label: "Jabatan" },
+        { to: "/admin/undang", label: "Undang Admin" },
         { to: "/admin/kantor", label: "Lokasi Kantor", icon: "/icons/11-lokasi-kantor.png" },
       ]
     : [];

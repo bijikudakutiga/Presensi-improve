@@ -214,3 +214,9 @@ export interface KpiResponse {
   created_at: string;
   updated_at: string;
 }
+
+export interface PendingAdminInvite {
+  email: string;
+  hr_access: boolean;
+  created_at: string;
+}

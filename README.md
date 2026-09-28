@@ -60,6 +60,10 @@ Storage), di-deploy ke Cloudflare Pages lewat repo GitHub.
   Manager) tetap bisa mengelola Rekap Absensi/Data Karyawan/Jabatan tapi
   tidak melihat data gaji atau pengaturan KPI. Dijaga di level database
   (RLS), bukan cuma disembunyikan di tampilan.
+- **Undang Admin**: admin bisa mendaftarkan email calon admin baru dari
+  menu **Undang Admin** — begitu orang itu login pakai Google untuk
+  pertama kali, akunnya otomatis langsung jadi admin (dan Akses HR kalau
+  dicentang), tanpa perlu SQL manual.
 
 ---
 
@@ -129,6 +133,16 @@ Configuration → Redirect URLs** supaya login Google berfungsi saat development
    centang **Akses HR** untuk admin lain yang juga perlu melihat
    Payroll/KPI (mis. HR Manager).
 8. Setiap karyawan mengisi sendiri menu **Data Diri** masing-masing.
+
+## Menambah karyawan / admin baru (ke depannya)
+
+- **Karyawan biasa**: tidak perlu didaftarkan dulu — orangnya cukup buka
+  URL aplikasi dan login pakai Google. Akun langsung terbuat otomatis
+  (role: Karyawan). Admin lalu melengkapi jabatan/atasan/gaji lewat
+  **Data Karyawan**, atau naikkan jadi admin dari sana kalau perlu.
+- **Admin baru**: buka menu **Undang Admin**, masukkan emailnya (centang
+  Akses HR kalau perlu), simpan. Begitu orang itu login pertama kali,
+  akunnya otomatis langsung jadi admin — tidak perlu SQL sama sekali.
 
 ## 5. Alur payroll bulanan
 

@@ -17,6 +17,7 @@ import { AdminSchedule } from "./pages/AdminSchedule";
 import { AdminEmployees } from "./pages/AdminEmployees";
 import { AdminPayroll } from "./pages/AdminPayroll";
 import { AdminPositions } from "./pages/AdminPositions";
+import { AdminInvites } from "./pages/AdminInvites";
 import { AdminKpiTemplates } from "./pages/AdminKpiTemplates";
 import { AdminKpiPeriods } from "./pages/AdminKpiPeriods";
 
@@ -128,6 +129,14 @@ export default function App() {
           element={
             <AdminRoute>
               <AdminPositions />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="/admin/undang"
+          element={
+            <AdminRoute>
+              <AdminInvites />
             </AdminRoute>
           }
         />

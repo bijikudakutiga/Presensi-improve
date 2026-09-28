@@ -117,6 +117,7 @@ export function Dashboard() {
     { to: "/admin", label: "Rekap Absensi", icon: "/icons/08-riwayat.png", show: isAdmin },
     { to: "/admin/karyawan", label: "Data Karyawan", icon: "/icons/10-data-diri.png", show: isAdmin },
     { to: "/admin/jabatan", label: "Jabatan", emoji: "🏷", show: isAdmin },
+    { to: "/admin/undang", label: "Undang Admin", emoji: "✉️", show: isAdmin },
     { to: "/admin/kantor", label: "Lokasi Kantor", icon: "/icons/11-lokasi-kantor.png", show: isAdmin },
     { to: "/admin/payroll", label: "Payroll", icon: "/icons/09-payroll.png", show: isHr },
     { to: "/admin/jadwal", label: "Jadwal & Tarif", icon: "/icons/12-jadwal-tarif.png", show: isHr },
@@ -132,7 +133,7 @@ export function Dashboard() {
 
   return (
     <div className="animate-fadein">
-      <div className="bg-gradient-to-br from-primary to-primary-dark px-4 pt-[calc(env(safe-area-inset-top,0px)+14px)] pb-16 text-white">
+      <div className="bg-gradient-to-br from-primary to-primary-dark px-4 pt-6 pb-16 text-white">
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-3">
             <div className="relative">
@@ -155,10 +156,13 @@ export function Dashboard() {
               <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarChange} />
             </div>
             <div className="min-w-0">
-              <p className="text-xs text-white/70">Howdy!!</p>
+              <p className="text-xs text-white/70">Selamat datang di ImproveHub</p>
               <h1 className="text-lg font-extrabold tracking-tight truncate max-w-[46vw]">
                 {profile?.full_name || profile?.email}
               </h1>
+              {profile?.position && (
+                <p className="text-xs text-white/70 truncate max-w-[46vw]">{profile.position}</p>
+              )}
             </div>
           </div>
           <span className="flex h-9 w-9 items-center justify-center rounded-full bg-white/15 text-lg">🔔</span>

@@ -18,7 +18,7 @@ alter table public.positions enable row level security;
 drop policy if exists "Semua pengguna login bisa lihat daftar jabatan" on public.positions;
 create policy "Semua pengguna login bisa lihat daftar jabatan"
   on public.positions for select
-  using (auth.role() = 'authenticated');
+  using (public.is_approved());
 
 drop policy if exists "Hanya admin bisa kelola jabatan" on public.positions;
 create policy "Hanya admin bisa kelola jabatan"
@@ -74,6 +74,7 @@ begin
     new.position_id := old.position_id;
     new.supervisor_id := old.supervisor_id;
     new.hr_access := old.hr_access;
+    new.approval_status := old.approval_status;
   end if;
   return new;
 end;
@@ -89,7 +90,9 @@ returns table (id uuid, full_name text, avatar_url text, position_id uuid, super
 language sql
 security definer set search_path = public
 as $$
-  select id, full_name, avatar_url, position_id, supervisor_id, role from public.profiles;
+  select id, full_name, avatar_url, position_id, supervisor_id, role
+  from public.profiles
+  where approval_status = 'approved' and public.is_approved();
 $$;
 
 grant execute on function public.get_employee_directory() to authenticated;
@@ -110,7 +113,7 @@ alter table public.kpi_templates enable row level security;
 drop policy if exists "Semua pengguna login bisa lihat template KPI" on public.kpi_templates;
 create policy "Semua pengguna login bisa lihat template KPI"
   on public.kpi_templates for select
-  using (auth.role() = 'authenticated');
+  using (public.is_approved());
 
 drop policy if exists "Hanya admin kelola template KPI" on public.kpi_templates;
 create policy "Hanya admin kelola template KPI"
@@ -131,7 +134,7 @@ alter table public.kpi_template_positions enable row level security;
 drop policy if exists "Semua pengguna login bisa lihat lingkup template" on public.kpi_template_positions;
 create policy "Semua pengguna login bisa lihat lingkup template"
   on public.kpi_template_positions for select
-  using (auth.role() = 'authenticated');
+  using (public.is_approved());
 
 drop policy if exists "Hanya admin kelola lingkup template" on public.kpi_template_positions;
 create policy "Hanya admin kelola lingkup template"
@@ -154,7 +157,7 @@ alter table public.kpi_questions enable row level security;
 drop policy if exists "Semua pengguna login bisa lihat pertanyaan KPI" on public.kpi_questions;
 create policy "Semua pengguna login bisa lihat pertanyaan KPI"
   on public.kpi_questions for select
-  using (auth.role() = 'authenticated');
+  using (public.is_approved());
 
 drop policy if exists "Hanya admin kelola pertanyaan KPI" on public.kpi_questions;
 create policy "Hanya admin kelola pertanyaan KPI"
@@ -183,7 +186,7 @@ alter table public.kpi_periods enable row level security;
 drop policy if exists "Semua pengguna login bisa lihat periode KPI" on public.kpi_periods;
 create policy "Semua pengguna login bisa lihat periode KPI"
   on public.kpi_periods for select
-  using (auth.role() = 'authenticated');
+  using (public.is_approved());
 
 drop policy if exists "Hanya admin kelola periode KPI" on public.kpi_periods;
 create policy "Hanya admin kelola periode KPI"
@@ -322,10 +325,10 @@ begin
 
   for subj in
     select p.* from public.profiles p
-    where (not v_has_scope) or exists (
+    where p.approval_status = 'approved' and ((not v_has_scope) or exists (
       select 1 from public.kpi_template_positions tp
       where tp.template_id = v_template_id and tp.position_id = p.position_id
-    )
+    ))
   loop
     if subj.supervisor_id is not null then
       insert into public.kpi_assignments (period_id, reviewer_id, subject_id, relation)
@@ -333,7 +336,7 @@ begin
       on conflict do nothing;
     end if;
 
-    for peer in select * from public.profiles where supervisor_id = subj.id loop
+    for peer in select * from public.profiles where supervisor_id = subj.id and approval_status = 'approved' loop
       insert into public.kpi_assignments (period_id, reviewer_id, subject_id, relation)
       values (p_period_id, peer.id, subj.id, 'bawahan_ke_atasan')
       on conflict do nothing;
@@ -341,7 +344,7 @@ begin
 
     if subj.supervisor_id is not null then
       for peer in
-        select * from public.profiles where supervisor_id = subj.supervisor_id and id <> subj.id
+        select * from public.profiles where supervisor_id = subj.supervisor_id and id <> subj.id and approval_status = 'approved'
       loop
         insert into public.kpi_assignments (period_id, reviewer_id, subject_id, relation)
         values (p_period_id, peer.id, subj.id, 'rekan_setim')

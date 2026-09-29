@@ -58,6 +58,11 @@ export function AdminEmployees() {
               </div>
               <div className="text-right">
                 <p className="text-xs font-semibold uppercase text-ink/40">{e.role}</p>
+                {e.approval_status !== "approved" && (
+                  <p className="text-xs font-semibold text-amber">
+                    {e.approval_status === "rejected" ? "Ditolak" : "Menunggu"}
+                  </p>
+                )}
                 {e.hr_access && (
                   <p className="text-xs font-semibold text-primary-dark">Akses HR</p>
                 )}

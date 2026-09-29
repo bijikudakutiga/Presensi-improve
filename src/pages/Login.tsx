@@ -25,7 +25,7 @@ export function Login() {
           Masuk dengan Google
         </button>
         <p className="text-xs text-ink/40">
-          Hanya email yang terdaftar oleh admin yang dapat mengakses sistem ini.
+          Akun baru perlu disetujui HR/admin sebelum bisa menggunakan aplikasi.
         </p>
       </div>
     </div>

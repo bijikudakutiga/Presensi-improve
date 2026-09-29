@@ -28,6 +28,7 @@ export interface Profile {
   bank_account_holder: string | null;
   base_salary: number | null;
   hr_access: boolean;
+  approval_status: "pending" | "approved" | "rejected";
   created_at: string;
 }
 

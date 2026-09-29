@@ -35,6 +35,7 @@ export function Dashboard() {
   const [sheetOpen, setSheetOpen] = useState(false);
   const [activeType, setActiveType] = useState<AttendanceType | null>(null);
   const [avatarUploading, setAvatarUploading] = useState(false);
+  const [pendingCount, setPendingCount] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   async function loadToday() {
@@ -65,6 +66,15 @@ export function Dashboard() {
       .then(({ data }) => setSchedule(data as WorkSchedule | null));
     getDailyQuote().then(setQuote);
   }, []);
+
+  useEffect(() => {
+    if (profile?.role !== "admin") return;
+    supabase
+      .from("profiles")
+      .select("id", { count: "exact", head: true })
+      .eq("approval_status", "pending")
+      .then(({ count }) => setPendingCount(count || 0));
+  }, [profile?.role]);
 
   // Tombol "+" di bottom nav mengarah ke /?absen=1 supaya bisa langsung
   // membuka sheet presensi dari halaman mana pun.
@@ -115,6 +125,7 @@ export function Dashboard() {
     { to: "/proyek", label: "Proyek", emoji: "🗂", show: true },
     { to: "/data-diri", label: "Data Diri", icon: "/icons/10-data-diri.png", show: true },
     { to: "/admin", label: "Rekap Absensi", icon: "/icons/08-riwayat.png", show: isAdmin },
+    { to: "/admin/persetujuan", label: "Persetujuan Akun", emoji: "✅", show: isAdmin },
     { to: "/admin/karyawan", label: "Data Karyawan", icon: "/icons/10-data-diri.png", show: isAdmin },
     { to: "/admin/jabatan", label: "Jabatan", emoji: "🏷", show: isAdmin },
     { to: "/admin/undang", label: "Undang Admin", emoji: "✉️", show: isAdmin },
@@ -170,6 +181,17 @@ export function Dashboard() {
       </div>
 
       <div className="relative -mt-10 px-4 space-y-4">
+        {pendingCount > 0 && (
+          <Link
+            to="/admin/persetujuan"
+            className="card flex items-center justify-between bg-amber-soft border-amber-soft animate-popin"
+          >
+            <span className="text-sm font-semibold text-amber">
+              {pendingCount} akun baru menunggu persetujuan
+            </span>
+            <span className="text-sm font-semibold text-amber">Tinjau →</span>
+          </Link>
+        )}
         <div className="card">
           <div className="flex items-center justify-between mb-2">
             <p className="font-semibold text-sm">

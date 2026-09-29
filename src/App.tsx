@@ -3,6 +3,7 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import { useAuth } from "./context/AuthContext";
 import { Layout } from "./components/Layout";
 import { SplashScreen } from "./components/SplashScreen";
+import { AccountStatusScreen } from "./components/AccountStatusScreen";
 import { Login } from "./pages/Login";
 import { Dashboard } from "./pages/Dashboard";
 import { HistoryPage } from "./pages/HistoryPage";
@@ -18,6 +19,7 @@ import { AdminEmployees } from "./pages/AdminEmployees";
 import { AdminPayroll } from "./pages/AdminPayroll";
 import { AdminPositions } from "./pages/AdminPositions";
 import { AdminInvites } from "./pages/AdminInvites";
+import { AdminApprovals } from "./pages/AdminApprovals";
 import { AdminKpiTemplates } from "./pages/AdminKpiTemplates";
 import { AdminKpiPeriods } from "./pages/AdminKpiPeriods";
 
@@ -34,7 +36,7 @@ function HrRoute({ children }: { children: JSX.Element }) {
 }
 
 export default function App() {
-  const { session, profile, profileError, loading } = useAuth();
+  const { session, profile, profileError, loading, refreshProfile, signOut } = useAuth();
   const [showSplash, setShowSplash] = useState(true);
 
   if (showSplash) {
@@ -69,8 +71,22 @@ export default function App() {
           {profileError && (
             <p className="text-xs text-rust mt-3 break-words">Error teknis: {profileError}</p>
           )}
+          <button className="btn-outline mt-4" onClick={signOut}>
+            Keluar
+          </button>
         </div>
       </div>
+    );
+  }
+
+  if (profile.approval_status !== "approved") {
+    return (
+      <AccountStatusScreen
+        status={profile.approval_status === "rejected" ? "rejected" : "pending"}
+        email={session.user.email}
+        onRefresh={refreshProfile}
+        onSignOut={signOut}
+      />
     );
   }
 
@@ -129,6 +145,14 @@ export default function App() {
           element={
             <AdminRoute>
               <AdminPositions />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="/admin/persetujuan"
+          element={
+            <AdminRoute>
+              <AdminApprovals />
             </AdminRoute>
           }
         />

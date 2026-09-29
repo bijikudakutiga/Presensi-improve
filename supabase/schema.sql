@@ -33,6 +33,7 @@ create table if not exists public.profiles (
   bank_account_number text,
   bank_account_holder text,
   base_salary numeric,
+  approval_status text not null default 'pending' check (approval_status in ('pending', 'approved', 'rejected')),
   created_at timestamptz not null default now()
 );
 
@@ -56,6 +57,7 @@ alter table public.profiles add column if not exists bank_name text;
 alter table public.profiles add column if not exists bank_account_number text;
 alter table public.profiles add column if not exists bank_account_holder text;
 alter table public.profiles add column if not exists base_salary numeric;
+alter table public.profiles add column if not exists approval_status text not null default 'pending' check (approval_status in ('pending', 'approved', 'rejected'));
 
 alter table public.profiles enable row level security;
 
@@ -76,6 +78,19 @@ as $$
 $$;
 
 grant execute on function public.is_admin() to authenticated;
+
+-- Apakah akun yang login sudah disetujui HR/admin? Akun baru berstatus
+-- 'pending' dan tidak boleh mengakses data aplikasi sampai disetujui.
+create or replace function public.is_approved()
+returns boolean
+language sql
+stable
+security definer set search_path = public
+as $$
+  select exists (select 1 from public.profiles p where p.id = auth.uid() and p.approval_status = 'approved');
+$$;
+
+grant execute on function public.is_approved() to authenticated;
 
 drop policy if exists "Pengguna bisa melihat profil sendiri" on public.profiles;
 create policy "Pengguna bisa melihat profil sendiri"
@@ -127,13 +142,14 @@ declare
 begin
   select * into v_invite from public.pending_admin_invites where email = new.email;
 
-  insert into public.profiles (id, full_name, email, role, hr_access)
+  insert into public.profiles (id, full_name, email, role, hr_access, approval_status)
   values (
     new.id,
     coalesce(new.raw_user_meta_data ->> 'full_name', new.raw_user_meta_data ->> 'name'),
     new.email,
     case when v_invite.email is not null then 'admin' else 'employee' end,
-    coalesce(v_invite.hr_access, false)
+    coalesce(v_invite.hr_access, false),
+    case when v_invite.email is not null then 'approved' else 'pending' end
   )
   on conflict (id) do nothing;
 
@@ -188,7 +204,7 @@ alter table public.offices enable row level security;
 drop policy if exists "Semua pengguna login bisa melihat daftar kantor" on public.offices;
 create policy "Semua pengguna login bisa melihat daftar kantor"
   on public.offices for select
-  using (auth.role() = 'authenticated');
+  using (public.is_approved());
 
 drop policy if exists "Hanya admin bisa mengubah kantor" on public.offices;
 create policy "Hanya admin bisa mengubah kantor"
@@ -215,7 +231,7 @@ alter table public.work_schedules enable row level security;
 drop policy if exists "Semua pengguna login bisa melihat jadwal kerja" on public.work_schedules;
 create policy "Semua pengguna login bisa melihat jadwal kerja"
   on public.work_schedules for select
-  using (auth.role() = 'authenticated');
+  using (public.is_approved());
 
 drop policy if exists "Hanya admin bisa mengubah jadwal kerja" on public.work_schedules;
 create policy "Hanya admin bisa mengubah jadwal kerja"
@@ -303,6 +319,10 @@ declare
   v_within boolean;
   v_row public.attendance;
 begin
+  if not public.is_approved() then
+    raise exception 'Akun belum disetujui HR/admin';
+  end if;
+
   if p_type not in ('in', 'out', 'visit_in', 'visit_out', 'overtime_in', 'overtime_out') then
     raise exception 'Jenis presensi tidak valid';
   end if;
@@ -352,6 +372,7 @@ create policy "Pengguna upload ke folder sendiri"
   with check (
     bucket_id = 'attendance-photos'
     and (storage.foldername(name))[1] = auth.uid()::text
+    and public.is_approved()
   );
 
 drop policy if exists "Pengguna lihat foto sendiri" on storage.objects;
@@ -504,7 +525,7 @@ begin
     raise exception 'Periode ini sudah difinalisasi dan tidak bisa dihitung ulang.';
   end if;
 
-  for emp in select * from public.profiles loop
+  for emp in select * from public.profiles where approval_status = 'approved' loop
     v_late_minutes := 0;
     if v_schedule.id is not null then
       select coalesce(sum(

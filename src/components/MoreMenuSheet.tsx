@@ -19,6 +19,7 @@ export function MoreMenuSheet({ onClose }: { onClose: () => void }) {
   const adminItems: Item[] = profile?.role === "admin"
     ? [
         { to: "/admin", label: "Rekap Absensi", icon: "/icons/08-riwayat.png" },
+        { to: "/admin/persetujuan", label: "Persetujuan Akun" },
         { to: "/admin/karyawan", label: "Data Karyawan", icon: "/icons/10-data-diri.png" },
         { to: "/admin/jabatan", label: "Jabatan" },
         { to: "/admin/undang", label: "Undang Admin" },

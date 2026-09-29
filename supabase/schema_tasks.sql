@@ -103,7 +103,7 @@ create policy "Lihat proyek jika anggota/pembuat/admin"
 drop policy if exists "Siapa saja bisa buat proyek" on public.projects;
 create policy "Siapa saja bisa buat proyek"
   on public.projects for insert
-  with check (created_by = auth.uid());
+  with check (created_by = auth.uid() and public.is_approved());
 
 drop policy if exists "Pembuat/admin bisa ubah proyek" on public.projects;
 create policy "Pembuat/admin bisa ubah proyek"

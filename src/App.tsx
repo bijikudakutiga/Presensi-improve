@@ -4,6 +4,7 @@ import { useAuth } from "./context/AuthContext";
 import { Layout } from "./components/Layout";
 import { SplashScreen } from "./components/SplashScreen";
 import { AccountStatusScreen } from "./components/AccountStatusScreen";
+import { InstallPrompt } from "./components/InstallPrompt";
 import { Login } from "./pages/Login";
 import { Dashboard } from "./pages/Dashboard";
 import { HistoryPage } from "./pages/HistoryPage";
@@ -51,12 +52,12 @@ export default function App() {
     );
   }
 
-  if (!session) {
-    return <Login />;
-  }
+  let content: JSX.Element;
 
-  if (!profile) {
-    return (
+  if (!session) {
+    content = <Login />;
+  } else if (!profile) {
+    content = (
       <div className="min-h-screen flex items-center justify-center px-4 text-center">
         <div>
           <p className="font-semibold">Akun belum terdaftar sebagai karyawan.</p>
@@ -77,10 +78,8 @@ export default function App() {
         </div>
       </div>
     );
-  }
-
-  if (profile.approval_status !== "approved") {
-    return (
+  } else if (profile.approval_status !== "approved") {
+    content = (
       <AccountStatusScreen
         status={profile.approval_status === "rejected" ? "rejected" : "pending"}
         email={session.user.email}
@@ -88,100 +87,107 @@ export default function App() {
         onSignOut={signOut}
       />
     );
+  } else {
+    content = (
+      <Routes>
+        <Route element={<Layout />}>
+          <Route index element={<Dashboard />} />
+          <Route path="/riwayat" element={<HistoryPage />} />
+          <Route path="/slip-gaji" element={<PayslipPage />} />
+          <Route path="/data-diri" element={<ProfileIdentityPage />} />
+          <Route path="/proyek" element={<Projects />} />
+          <Route path="/proyek/:id" element={<ProjectBoard />} />
+          <Route path="/kpi" element={<MyKpi />} />
+          <Route
+            path="/admin"
+            element={
+              <AdminRoute>
+                <AdminDashboard />
+              </AdminRoute>
+            }
+          />
+          <Route
+            path="/admin/karyawan"
+            element={
+              <AdminRoute>
+                <AdminEmployees />
+              </AdminRoute>
+            }
+          />
+          <Route
+            path="/admin/payroll"
+            element={
+              <HrRoute>
+                <AdminPayroll />
+              </HrRoute>
+            }
+          />
+          <Route
+            path="/admin/kantor"
+            element={
+              <AdminRoute>
+                <AdminOffices />
+              </AdminRoute>
+            }
+          />
+          <Route
+            path="/admin/jadwal"
+            element={
+              <HrRoute>
+                <AdminSchedule />
+              </HrRoute>
+            }
+          />
+          <Route
+            path="/admin/jabatan"
+            element={
+              <AdminRoute>
+                <AdminPositions />
+              </AdminRoute>
+            }
+          />
+          <Route
+            path="/admin/persetujuan"
+            element={
+              <AdminRoute>
+                <AdminApprovals />
+              </AdminRoute>
+            }
+          />
+          <Route
+            path="/admin/undang"
+            element={
+              <AdminRoute>
+                <AdminInvites />
+              </AdminRoute>
+            }
+          />
+          <Route
+            path="/admin/kpi-template"
+            element={
+              <HrRoute>
+                <AdminKpiTemplates />
+              </HrRoute>
+            }
+          />
+          <Route
+            path="/admin/kpi-periode"
+            element={
+              <HrRoute>
+                <AdminKpiPeriods />
+              </HrRoute>
+            }
+          />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Route>
+      </Routes>
+    );
   }
 
   return (
-    <Routes>
-      <Route element={<Layout />}>
-        <Route index element={<Dashboard />} />
-        <Route path="/riwayat" element={<HistoryPage />} />
-        <Route path="/slip-gaji" element={<PayslipPage />} />
-        <Route path="/data-diri" element={<ProfileIdentityPage />} />
-        <Route path="/proyek" element={<Projects />} />
-        <Route path="/proyek/:id" element={<ProjectBoard />} />
-        <Route path="/kpi" element={<MyKpi />} />
-        <Route
-          path="/admin"
-          element={
-            <AdminRoute>
-              <AdminDashboard />
-            </AdminRoute>
-          }
-        />
-        <Route
-          path="/admin/karyawan"
-          element={
-            <AdminRoute>
-              <AdminEmployees />
-            </AdminRoute>
-          }
-        />
-        <Route
-          path="/admin/payroll"
-          element={
-            <HrRoute>
-              <AdminPayroll />
-            </HrRoute>
-          }
-        />
-        <Route
-          path="/admin/kantor"
-          element={
-            <AdminRoute>
-              <AdminOffices />
-            </AdminRoute>
-          }
-        />
-        <Route
-          path="/admin/jadwal"
-          element={
-            <HrRoute>
-              <AdminSchedule />
-            </HrRoute>
-          }
-        />
-        <Route
-          path="/admin/jabatan"
-          element={
-            <AdminRoute>
-              <AdminPositions />
-            </AdminRoute>
-          }
-        />
-        <Route
-          path="/admin/persetujuan"
-          element={
-            <AdminRoute>
-              <AdminApprovals />
-            </AdminRoute>
-          }
-        />
-        <Route
-          path="/admin/undang"
-          element={
-            <AdminRoute>
-              <AdminInvites />
-            </AdminRoute>
-          }
-        />
-        <Route
-          path="/admin/kpi-template"
-          element={
-            <HrRoute>
-              <AdminKpiTemplates />
-            </HrRoute>
-          }
-        />
-        <Route
-          path="/admin/kpi-periode"
-          element={
-            <HrRoute>
-              <AdminKpiPeriods />
-            </HrRoute>
-          }
-        />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Route>
-    </Routes>
+    <>
+      {content}
+      <InstallPrompt />
+    </>
   );
 }

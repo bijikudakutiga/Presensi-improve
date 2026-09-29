@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { MoreMenuSheet } from "./MoreMenuSheet";
-import { InstallPrompt } from "./InstallPrompt";
 
 export function Layout() {
   const navigate = useNavigate();
@@ -63,7 +62,6 @@ export function Layout() {
       </nav>
 
       {moreOpen && <MoreMenuSheet onClose={() => setMoreOpen(false)} />}
-      <InstallPrompt />
     </div>
   );
 }

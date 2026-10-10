@@ -60,6 +60,10 @@ export interface AttendanceRecord {
   distance_meters: number | null;
   within_radius: boolean | null;
   note: string | null;
+  is_manual: boolean;
+  manual_reason: string | null;
+  edited_by: string | null;
+  edited_at: string | null;
   created_at: string;
   profile?: Pick<Profile, "full_name" | "email"> | null;
   office?: Pick<Office, "name"> | null;
@@ -153,6 +157,9 @@ export interface Task {
   status: TaskStatus;
   assigned_to: string | null;
   created_by: string;
+  due_date: string | null;
+  attachment_note: string | null;
+  attachment_url: string | null;
   started_at: string | null;
   completed_at: string | null;
   created_at: string;

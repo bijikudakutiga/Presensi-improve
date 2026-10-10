@@ -3,7 +3,9 @@ import { supabase } from "../supabaseClient";
 import { StatusBadge, TypeBadge } from "../components/StatusBadge";
 import { typeLabel } from "../lib/attendanceState";
 import { downloadCsv } from "../lib/csv";
-import type { AttendanceRecord } from "../types";
+import { getEmployeeDirectory } from "../lib/employeeDirectory";
+import { AttendanceEditModal } from "../components/AttendanceEditModal";
+import type { AttendanceRecord, EmployeeDirectoryEntry } from "../types";
 
 function todayInputValue(offsetDays = 0) {
   const d = new Date();
@@ -16,26 +18,32 @@ export function AdminDashboard() {
   const [to, setTo] = useState(todayInputValue(0));
   const [search, setSearch] = useState("");
   const [records, setRecords] = useState<AttendanceRecord[]>([]);
+  const [employees, setEmployees] = useState<EmployeeDirectoryEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [editRecord, setEditRecord] = useState<AttendanceRecord | null | "new">(null);
 
   async function load() {
     setLoading(true);
     setError(null);
     const fromIso = new Date(from + "T00:00:00").toISOString();
     const toIso = new Date(to + "T23:59:59").toISOString();
-    const { data, error: qError } = await supabase
-      .from("attendance")
-      .select("*, profile:profiles(full_name, email), office:offices(name)")
-      .gte("created_at", fromIso)
-      .lte("created_at", toIso)
-      .order("created_at", { ascending: false });
+    const [{ data, error: qError }, dir] = await Promise.all([
+      supabase
+        .from("attendance")
+        .select("*, profile:profiles(full_name, email), office:offices(name)")
+        .gte("created_at", fromIso)
+        .lte("created_at", toIso)
+        .order("created_at", { ascending: false }),
+      getEmployeeDirectory(),
+    ]);
     if (qError) {
       setError(qError.message);
       setRecords([]);
     } else {
       setRecords((data as unknown as AttendanceRecord[]) || []);
     }
+    setEmployees(dir);
     setLoading(false);
   }
 
@@ -65,6 +73,8 @@ export function AdminDashboard() {
         jarak_meter: r.distance_meters !== null ? Math.round(r.distance_meters) : "",
         dalam_radius: r.within_radius === null ? "" : r.within_radius ? "Ya" : "Tidak",
         catatan: r.note || "",
+        input_manual: r.is_manual ? "Ya" : "Tidak",
+        alasan_manual: r.manual_reason || "",
         latitude: r.latitude,
         longitude: r.longitude,
       }))
@@ -75,9 +85,14 @@ export function AdminDashboard() {
     <div className="space-y-4 animate-fadein">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <h1 className="text-xl font-extrabold tracking-tight">Dashboard Admin</h1>
-        <button className="btn-outline text-sm" onClick={exportCsv} disabled={filtered.length === 0}>
-          Ekspor CSV
-        </button>
+        <div className="flex gap-2">
+          <button className="btn-primary text-sm" onClick={() => setEditRecord("new")}>
+            + Tambah Manual
+          </button>
+          <button className="btn-outline text-sm" onClick={exportCsv} disabled={filtered.length === 0}>
+            Ekspor CSV
+          </button>
+        </div>
       </div>
 
       <div className="card flex flex-wrap items-end gap-3">
@@ -128,6 +143,7 @@ export function AdminDashboard() {
                 <th className="py-2 pr-3 font-semibold">Kantor</th>
                 <th className="py-2 pr-3 font-semibold">Jarak</th>
                 <th className="py-2 pr-3 font-semibold">Validasi</th>
+                <th className="py-2 pr-3 font-semibold"></th>
               </tr>
             </thead>
             <tbody>
@@ -151,13 +167,38 @@ export function AdminDashboard() {
                     {r.distance_meters !== null ? `${Math.round(r.distance_meters)} m` : "-"}
                   </td>
                   <td className="py-2 pr-3">
-                    <StatusBadge withinRadius={r.within_radius} />
+                    <div className="flex flex-col gap-1">
+                      <StatusBadge withinRadius={r.within_radius} />
+                      {r.is_manual && (
+                        <span className="text-[10px] font-semibold text-amber">Input manual</span>
+                      )}
+                    </div>
+                  </td>
+                  <td className="py-2 pr-3">
+                    <button
+                      className="text-xs font-semibold text-primary-dark"
+                      onClick={() => setEditRecord(r)}
+                    >
+                      Edit
+                    </button>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
+      )}
+
+      {editRecord && (
+        <AttendanceEditModal
+          record={editRecord === "new" ? null : editRecord}
+          employees={employees}
+          onClose={() => setEditRecord(null)}
+          onSaved={() => {
+            setEditRecord(null);
+            load();
+          }}
+        />
       )}
     </div>
   );

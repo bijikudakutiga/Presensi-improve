@@ -9,6 +9,7 @@ export function AdminInvites() {
   const [hrAccess, setHrAccess] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [info, setInfo] = useState<string | null>(null);
 
   async function load() {
     setLoading(true);
@@ -28,14 +29,21 @@ export function AdminInvites() {
     if (!email.trim()) return;
     setSaving(true);
     setError(null);
-    const { error: insertError } = await supabase
-      .from("pending_admin_invites")
-      .upsert({ email: email.trim().toLowerCase(), hr_access: hrAccess });
+    setInfo(null);
+    const { data, error: rpcError } = await supabase.rpc("invite_admin", {
+      p_email: email.trim(),
+      p_hr_access: hrAccess,
+    });
     setSaving(false);
-    if (insertError) {
-      setError(insertError.message);
+    if (rpcError) {
+      setError(rpcError.message);
       return;
     }
+    setInfo(
+      data === "promoted"
+        ? "Akun ini sudah terdaftar — langsung dijadikan admin sekarang. Minta dia logout lalu login ulang."
+        : "Undangan disimpan. Akun otomatis jadi admin saat login pertama kali."
+    );
     setEmail("");
     setHrAccess(false);
     load();
@@ -50,8 +58,9 @@ export function AdminInvites() {
     <div className="space-y-4 animate-fadein">
       <h1 className="text-xl font-extrabold tracking-tight">Undang Admin</h1>
       <p className="text-sm text-ink/50 -mt-3">
-        Daftarkan email di sini agar begitu orang tersebut login pakai Google untuk pertama kali,
-        akunnya otomatis langsung jadi admin — tidak perlu diubah manual lagi di Data Karyawan.
+        Masukkan email Google calon admin. Kalau orangnya belum pernah login, akunnya otomatis jadi
+        admin begitu dia login pertama kali. Kalau orangnya sudah pernah login (sudah jadi karyawan
+        biasa), akunnya langsung dijadikan admin saat itu juga.
       </p>
 
       <div className="card space-y-3">
@@ -70,6 +79,7 @@ export function AdminInvites() {
           Beri juga Akses HR (bisa lihat Payroll & pengaturan KPI)
         </label>
         {error && <p className="text-sm text-rust">{error}</p>}
+        {info && <p className="text-sm text-primary-dark">{info}</p>}
         <button className="btn-primary w-full" onClick={handleInvite} disabled={saving || !email.trim()}>
           {saving ? "Menyimpan..." : "Undang sebagai Admin"}
         </button>

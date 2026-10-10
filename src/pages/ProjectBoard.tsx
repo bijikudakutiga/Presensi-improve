@@ -19,6 +19,32 @@ const PRIORITY_COLOR: Record<string, string> = {
   Tinggi: "bg-rust-soft text-rust",
 };
 
+function dueDateInfo(dueDate: string | null, status: TaskStatus) {
+  if (!dueDate) return null;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const due = new Date(dueDate + "T00:00:00");
+  const diffDays = Math.round((due.getTime() - today.getTime()) / 86400000);
+  const label = due.toLocaleDateString("id-ID", { day: "numeric", month: "short" });
+
+  if (status === "selesai") {
+    return { label, className: "bg-primary-soft text-primary-dark" };
+  }
+  if (diffDays < 0) {
+    return { label: `Lewat tenggat · ${label}`, className: "bg-rust-soft text-rust" };
+  }
+  if (diffDays === 0) {
+    return { label: `Hari ini · ${label}`, className: "bg-rust-soft text-rust" };
+  }
+  if (diffDays === 1) {
+    return { label: `Besok · ${label}`, className: "bg-amber-soft text-amber" };
+  }
+  if (diffDays <= 3) {
+    return { label: `${diffDays} hari lagi · ${label}`, className: "bg-amber-soft text-amber" };
+  }
+  return { label, className: "bg-ink/5 text-ink/50" };
+}
+
 export function ProjectBoard() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -88,10 +114,13 @@ export function ProjectBoard() {
         dibuat_oleh: directory[t.created_by]?.full_name || "-",
         waktu_mulai: t.started_at ? new Date(t.started_at).toLocaleString("id-ID") : "",
         waktu_selesai: t.completed_at ? new Date(t.completed_at).toLocaleString("id-ID") : "",
+        tenggat: t.due_date || "",
         detail: t.detail || "",
         status: COLUMNS.find((c) => c.status === t.status)?.label || t.status,
         prioritas: t.priority,
         karyawan_ditugaskan: t.assigned_to ? directory[t.assigned_to]?.full_name || "-" : "",
+        catatan_lampiran: t.attachment_note || "",
+        link_lampiran: t.attachment_url || "",
       }))
     );
   }
@@ -100,7 +129,7 @@ export function ProjectBoard() {
   if (error || !project) return <p className="text-sm text-rust">{error}</p>;
 
   return (
-    <div className="space-y-4 animate-fadein">
+    <div className="space-y-4">
       <button className="text-sm font-semibold text-ink/50" onClick={() => navigate("/proyek")}>
         ← Semua Proyek
       </button>
@@ -163,35 +192,50 @@ export function ProjectBoard() {
                 <span className="rounded-full bg-line px-2 text-ink/50">{colTasks.length}</span>
               </p>
               <div className="space-y-2 min-h-[60px]">
-                {colTasks.map((t) => (
-                  <div key={t.id} className="card cursor-pointer" onClick={() => setModalTask(t)}>
-                    <div className="flex items-start justify-between gap-2">
-                      <p className="font-semibold text-sm">{t.title}</p>
-                      <span className={`shrink-0 rounded-sm px-1.5 py-0.5 text-xs font-semibold ${PRIORITY_COLOR[t.priority]}`}>
-                        {t.priority}
-                      </span>
+                {colTasks.map((t) => {
+                  const due = dueDateInfo(t.due_date, t.status);
+                  return (
+                    <div key={t.id} className="card cursor-pointer" onClick={() => setModalTask(t)}>
+                      <div className="flex items-start justify-between gap-2">
+                        <p className="font-semibold text-sm">{t.title}</p>
+                        <span className={`shrink-0 rounded-sm px-1.5 py-0.5 text-xs font-semibold ${PRIORITY_COLOR[t.priority]}`}>
+                          {t.priority}
+                        </span>
+                      </div>
+                      {t.assigned_to && (
+                        <p className="mt-1 text-xs text-ink/50">{directory[t.assigned_to]?.full_name || "-"}</p>
+                      )}
+                      <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                        {due && (
+                          <span className={`rounded-sm px-1.5 py-0.5 text-[11px] font-semibold ${due.className}`}>
+                            📅 {due.label}
+                          </span>
+                        )}
+                        {(t.attachment_note || t.attachment_url) && (
+                          <span className="rounded-sm bg-ink/5 px-1.5 py-0.5 text-[11px] font-semibold text-ink/50">
+                            📎 Lampiran
+                          </span>
+                        )}
+                      </div>
+                      <div className="mt-2 flex justify-between" onClick={(e) => e.stopPropagation()}>
+                        <button
+                          className="text-xs text-ink/40 disabled:opacity-0"
+                          disabled={colIdx === 0}
+                          onClick={() => moveTask(t, -1)}
+                        >
+                          ← Mundur
+                        </button>
+                        <button
+                          className="text-xs text-primary-dark font-semibold disabled:opacity-0"
+                          disabled={colIdx === COLUMNS.length - 1}
+                          onClick={() => moveTask(t, 1)}
+                        >
+                          Lanjut →
+                        </button>
+                      </div>
                     </div>
-                    {t.assigned_to && (
-                      <p className="mt-1 text-xs text-ink/50">{directory[t.assigned_to]?.full_name || "-"}</p>
-                    )}
-                    <div className="mt-2 flex justify-between" onClick={(e) => e.stopPropagation()}>
-                      <button
-                        className="text-xs text-ink/40 disabled:opacity-0"
-                        disabled={colIdx === 0}
-                        onClick={() => moveTask(t, -1)}
-                      >
-                        ← Mundur
-                      </button>
-                      <button
-                        className="text-xs text-primary-dark font-semibold disabled:opacity-0"
-                        disabled={colIdx === COLUMNS.length - 1}
-                        onClick={() => moveTask(t, 1)}
-                      >
-                        Lanjut →
-                      </button>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           );

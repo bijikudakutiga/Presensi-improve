@@ -23,12 +23,19 @@ export function TaskModal({ projectId, userId, members, task, onClose, onSaved }
   const [priority, setPriority] = useState<TaskPriority>(task?.priority || "Sedang");
   const [status, setStatus] = useState<TaskStatus>(task?.status || "belum_dimulai");
   const [assignedTo, setAssignedTo] = useState(task?.assigned_to || userId);
+  const [dueDate, setDueDate] = useState(task?.due_date || "");
+  const [attachmentNote, setAttachmentNote] = useState(task?.attachment_note || "");
+  const [attachmentUrl, setAttachmentUrl] = useState(task?.attachment_url || "");
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function handleSave() {
     if (!title.trim()) return;
+    if (attachmentUrl.trim() && !/^https?:\/\//i.test(attachmentUrl.trim())) {
+      setError("Link lampiran harus diawali http:// atau https://");
+      return;
+    }
     setSaving(true);
     setError(null);
     const payload = {
@@ -37,6 +44,9 @@ export function TaskModal({ projectId, userId, members, task, onClose, onSaved }
       priority,
       status,
       assigned_to: assignedTo || null,
+      due_date: dueDate || null,
+      attachment_note: attachmentNote.trim() || null,
+      attachment_url: attachmentUrl.trim() || null,
     };
     const { error: saveError } = task
       ? await supabase.from("tasks").update(payload).eq("id", task.id)
@@ -107,6 +117,11 @@ export function TaskModal({ projectId, userId, members, task, onClose, onSaved }
         </div>
 
         <label className="block">
+          <span className="field-label block mb-1">Tenggat (opsional)</span>
+          <input type="date" className="input" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
+        </label>
+
+        <label className="block">
           <span className="field-label block mb-1">Karyawan ditugaskan</span>
           <select className="input" value={assignedTo} onChange={(e) => setAssignedTo(e.target.value)}>
             <option value="">Belum ditentukan</option>
@@ -117,6 +132,43 @@ export function TaskModal({ projectId, userId, members, task, onClose, onSaved }
             ))}
           </select>
         </label>
+
+        <div className="rounded-lg border border-line p-3 space-y-2">
+          <p className="field-label">Lampiran (opsional)</p>
+          <label className="block">
+            <span className="text-xs text-ink/50 block mb-1">Catatan</span>
+            <textarea
+              className="input"
+              rows={2}
+              placeholder="Catatan tambahan terkait task ini"
+              value={attachmentNote}
+              onChange={(e) => setAttachmentNote(e.target.value)}
+            />
+          </label>
+          <label className="block">
+            <span className="text-xs text-ink/50 block mb-1 flex items-center justify-between">
+              Link Google Drive / URL lain
+              {attachmentUrl.trim() && /^https?:\/\//i.test(attachmentUrl.trim()) && (
+                <a
+                  href={attachmentUrl.trim()}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-primary-dark font-semibold"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  Buka tautan ↗
+                </a>
+              )}
+            </span>
+            <input
+              type="url"
+              className="input"
+              placeholder="https://drive.google.com/..."
+              value={attachmentUrl}
+              onChange={(e) => setAttachmentUrl(e.target.value)}
+            />
+          </label>
+        </div>
 
         {error && <p className="text-sm text-rust">{error}</p>}
 
